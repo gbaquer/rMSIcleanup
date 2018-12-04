@@ -1,13 +1,16 @@
 Package: rMSIcleanup
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Anotation and removal of the matrix peaks in MALDI data
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Authors@R: as.person(c(
+    "Gerard Baquer Gómez <gerard.baquer@urv.cat> [aut, cre]"
+  ))
+Maintainer: Gerard Baquer Gómez <gerard.baquer@urv.cat>
+Description: Package for annotating and removing the matrix peaks in MALDI data. It is compatible with the imzML and rMSI .tar formats.
+License: file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports: Rcpp (>= 1.0.0)
 LinkingTo: Rcpp
+Suggests: 
+    testthat
