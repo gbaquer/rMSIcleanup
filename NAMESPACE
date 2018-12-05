@@ -2,6 +2,7 @@
 
 export(hello)
 export(identify_matrix_correlation)
+export(printv)
 export(rcpp_hello)
 exportPattern("^[[:alpha:]]+")
 import(R.utils)

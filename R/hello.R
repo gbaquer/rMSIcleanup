@@ -18,12 +18,32 @@ library(R.utils)
 
 #GLOBAL VARIABLES
 
-#' Verbose threshold:
-#' 0: Application messages
+#' Print verbose
+#'
+#' Print \code{message} if the verbose \code{level} is higher than the specified \code{threshold}.
+#'
+#'  1: Silent
+#'  0: Application messages
 #' -1: Code Sections
 #' -2: Code subsections
 #' -3: Debug mode
-v=Verbose(threshold=0)
+#'
+#' @param message String to print out
+#' @param level Verbose level
+#'
+#' @return None
+#'
+#' @examples
+#' printv("Hello World!",0)
+#'
+#' @export
+printv <- function(message,level) {
+  threshold=0
+  if(level>=threshold)
+  {
+    print(message)
+  }
+}
 
 #START FUNCTIONS
 #' Hello world
@@ -53,11 +73,11 @@ hello <- function() {
 #' @export
 identify_matrix_correlation <- function () {
   #LOAD IMAGE
-  printf(v,level=2,"2")
-  printf(v,level=1,"1")
-  printf(v,level=0,"0")
-  printf(v,level=-1,"-1")
-  printf(v,level=-2,"-2")
+  printv("2",2)
+  printv("1",1)
+  printv("0",0)
+  printv("-1",-1)
+  printv("-2",-2)
 
   #PROCESS IMAGE
 
