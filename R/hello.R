@@ -9,24 +9,48 @@
 #
 #   Load function:             'Ctrl + Shift + L'
 #   Build and Reload Package:  'Ctrl + Shift + B'
+#   Run Roxygen2:              'Ctrl + Shift + D'
 #   Check Package:             'Ctrl + Shift + E'
 #   Test Package:              'Ctrl + Shift + T'
 
 #LOAD LIBRARIES
 library(R.utils)
-#Set Verbose threshold:
-# 0: Application messages
-# -1: Code Sections
-# -2: Code subsections
-# -3: Debug mode
+
+#GLOBAL VARIABLES
+
+#' Verbose threshold:
+#' 0: Application messages
+#' -1: Code Sections
+#' -2: Code subsections
+#' -3: Debug mode
 v=Verbose(threshold=0)
 
 #START FUNCTIONS
+#' Hello world
+#'
+#' Hello world function
+#'
+#' @return None
+#'
+#' @examples
+#' hello()
+#'
+#' @export
 hello <- function() {
   print("Hello, world 2!")
 }
 
-#FONVILLE et al. 2012
+
+#' Identify matrix correlation
+#'
+#' Identifies de matrix peaks by following the method presented by Fonville et al. 2012.
+#'
+#' @return None
+#'
+#' @examples
+#' identify_matrix_correlation()
+#'
+#' @export
 identify_matrix_correlation <- function () {
   #LOAD IMAGE
   printf(v,level=2,"2")

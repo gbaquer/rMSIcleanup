@@ -10,10 +10,20 @@ using namespace Rcpp;
 //   http://adv-r.had.co.nz/Rcpp.html
 //
 // and browse examples of code using Rcpp at:
-// 
+//
 //   http://gallery.rcpp.org/
 //
 
+//' Hello world Cpp
+//'
+//' Hello world function Cpp
+//'
+//' @return None
+//'
+//' @examples
+//' rcpp_hello()
+//'
+//' @export
 // [[Rcpp::export]]
 List rcpp_hello() {
   CharacterVector x = CharacterVector::create("foo", "bar");
