@@ -2,8 +2,9 @@ context("test-general")
 
 #RUN CODE
 output_string <- rMSIcleanup::hello()
-elapsed_t=system.time(for(i in 1:10000) x <- mean(rt(1000, df = 4)))
-t=as.numeric(elapsed_t)[1]
+t=0
+#elapsed_t=system.time(for(i in 1:10000) x <- mean(rt(1000, df = 4)))
+#t=as.numeric(elapsed_t)[1]
 
 #NUMERIC
 a=2*2

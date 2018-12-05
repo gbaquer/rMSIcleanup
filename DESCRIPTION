@@ -10,7 +10,9 @@ Description: Package for annotating and removing the matrix peaks in MALDI data.
 License: file LICENSE
 Encoding: UTF-8
 LazyData: true
-Imports: Rcpp (>= 1.0.0)
+Imports: 
+  Rcpp (>= 1.0.0),
+  R.utils
 LinkingTo: Rcpp
 Suggests: 
     testthat
