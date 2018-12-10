@@ -15,6 +15,7 @@
 
 #LOAD LIBRARIES
 library(R.utils)
+library(rMSI)
 
 #GLOBAL VARIABLES
 
@@ -72,18 +73,37 @@ hello <- function() {
 #'
 #' @export
 identify_matrix_correlation <- function () {
-  #LOAD IMAGE
-  printv("2",2)
-  printv("1",1)
-  printv("0",0)
-  printv("-1",-1)
-  printv("-2",-2)
+  #SECTION A: LOAD & PREPROCESS IMAGE
+  printv("SECTION A: Loading and preprocessing image",0)
+  #img_in <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/20170913_Norharmane_Fanny_RP_a.imzML")
+  #info_in <- getrMSIdataInfo(img_in)
+  #lapply(img_in$data, function(x){ ff::close.ff(x) }) #close ff files
+  #FullImageSmoothing(fileNames = info_in$filenames,
+  #                   massChannels = info_in$masschannels,
+  #                   numRows = info_in$nrows,
+  #                   dataType = info_in$datatype,
+  #                   numOfThreads = parallel::detectCores(),
+  #                   SmoothingKernelSize = 5)
 
-  #PROCESS IMAGE
+  #SECTION B: DETERMINE MATRIX PEAKS
+  printv("SECTION B: Determining matrix peaks",0)
+  #B.1:Determine regions (inside and outside)
+  #B.2:Determine correlation matrix
+  #B.3:Determine where are the matrix peaks located
 
-  #GET SUBSETS (TISSUE & OUTSIDE)
+  #Dummy application draw a circle inside of the image
+  #img_out=img_in
+  #img_out$name="Output Image"
+  #center_xy=ceiling(img_out$size/2)
+  #radius=min(center_xy)/2
 
-  #DETERMINE CORRELATION MATRIX
+  #SECTION C: REMOVE THE MATRIX PEAKS
+  printv("SECTION C: Removing matrix peaks",0)
+
+  #SECTION D: STORE CLEAN IMAGE
+  printv("SECTION D: Storing clean image",0)
+  #Plot 2 images
+  #rMSI::MSIWindow(img_in,img_out)
 }
 
 

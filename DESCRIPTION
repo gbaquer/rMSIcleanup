@@ -12,7 +12,8 @@ Encoding: UTF-8
 LazyData: true
 Imports: 
   Rcpp (>= 1.0.0),
-  R.utils
+  R.utils,
+  rMSI
 LinkingTo: Rcpp
 Suggests: 
     testthat

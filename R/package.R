@@ -5,7 +5,7 @@
 #' @docType package
 #' @author Gerard Baquer Gómez
 #' @exportPattern "^[[:alpha:]]+"
-#' @import Rcpp R.utils
+#' @import Rcpp R.utils rMSI
 #' @importFrom Rcpp evalCpp
 #' @useDynLib rMSIcleanup, .registration = TRUE
 #' @name rMSIcleanup

@@ -1,7 +1,7 @@
 context("test-general")
 
 #RUN CODE
-output_string <- rMSIcleanup::hello()
+output_string <- "world"#rMSIcleanup::hello()
 t=0
 #elapsed_t=system.time(for(i in 1:10000) x <- mean(rt(1000, df = 4)))
 #t=as.numeric(elapsed_t)[1]
