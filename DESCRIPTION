@@ -13,7 +13,10 @@ LazyData: true
 Imports: 
   Rcpp (>= 1.0.0),
   R.utils,
-  rMSI
+  rMSI,
+  rMSIproc,
+  gridExtra,
+  lattice
 LinkingTo: Rcpp
 Suggests: 
     testthat

@@ -188,24 +188,24 @@ identify_matrix_correlation <- function () {
   #                   SmoothingKernelSize = 5)
 
   #SECTION B: DETERMINE MATRIX PEAKS
-  printv("SECTION B: Determining matrix peaks",0)
+  #printv("SECTION B: Determining matrix peaks",0)
   #B.1:Determine regions (inside and outside)
   #B.2:Determine correlation matrix
   #B.3:Determine where are the matrix peaks located
 
   #Dummy application draw a circle inside of the image
-  img_out=img_in
+  #img_out=img_in
   #img_out$name="Output Image"
   #center_xy=ceiling(img_out$size/2)
   #radius=min(center_xy)/2
 
   #SECTION C: REMOVE THE MATRIX PEAKS
-  printv("SECTION C: Removing matrix peaks",0)
+  #printv("SECTION C: Removing matrix peaks",0)
 
   #SECTION D: STORE CLEAN IMAGE
-  printv("SECTION D: Storing clean image",0)
+  #printv("SECTION D: Storing clean image",0)
   #Plot 2 images
-  rMSI::MSIWindow(img_in,img_out)
+  #rMSI::MSIWindow(img_in,img_out)
 }
 
 
