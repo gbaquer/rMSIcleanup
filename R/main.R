@@ -1,8 +1,21 @@
-# Hello, world!
+#########################################################################
+#     rMSIcleanup - R package for MSI matrix removal
+#     Copyright (C) 2019 Gerard Baquer Gómez
 #
-# This is an example function named 'hello'
-# which prints 'Hello, world!'.
+#     This program is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
 #
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+############################################################################
+
 # You can learn more about package authoring with RStudio at:
 #
 #   http://r-pkgs.had.co.nz/
@@ -21,8 +34,6 @@ library("rMSI")
 library("rMSIproc")
 library("lattice")
 library("gridExtra")
-
-#GLOBAL VARIABLES
 
 #' Print verbose
 #'
@@ -51,32 +62,19 @@ printv <- function(message,level) {
   }
 }
 
-#START FUNCTIONS
-#' Hello world
+#' Remove Matrix Padded
 #'
-#' Hello world function
-#'
-#' @return None
-#'
-#' @examples
-#' hello()
-#'
-#' @export
-hello <- function() {
-  print("Hello, world 2!")
-}
-
-#' Identify matrix correlation
-#'
-#' Identifies de matrix peaks by following the method presented by Fonville et al. 2012.
+#' Remove the matrix following the method presented by Fonville et al. 2012.
+#' It takes a padded image where there is a wide enough region of pixels outside of the tissue.
+#' It consists of three basic steps.
 #'
 #' @return None
 #'
 #' @examples
-#' find_matrix_correlation()
+#' removeMatrix_padded()
 #'
 #' @export
-find_matrix_correlation <- function () {
+removeMatrix_padded <- function () {
   #SECTION 0 :: Load peak matrix
   pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
   pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
@@ -164,49 +162,4 @@ find_matrix_correlation <- function () {
   #Print image
   rMSIproc::plotPeakImage(pks_Norharmane_Final,c=2)
 }
-
-#' Identify matrix correlation
-#'
-#' Identifies de matrix peaks by following the method presented by Fonville et al. 2012.
-#'
-#' @return None
-#'
-#' @examples
-#' identify_matrix_correlation()
-#'
-#' @export
-identify_matrix_correlation <- function () {
-  #SECTION A: LOAD & PREPROCESS IMAGE
-  #printv("SECTION A: Loading and preprocessing image",0)
-  #info_in <- getrMSIdataInfo(img_in)
-  #lapply(img_in$data, function(x){ ff::close.ff(x) }) #close ff files
-  # FullImageSmoothing(fileNames = info_in$filenames,
-  #                   massChannels = info_in$masschannels,
-  #                   numRows = info_in$nrows,
-  #                   dataType = info_in$datatype,
-  #                   numOfThreads = parallel::detectCores(),
-  #                   SmoothingKernelSize = 5)
-
-  #SECTION B: DETERMINE MATRIX PEAKS
-  #printv("SECTION B: Determining matrix peaks",0)
-  #B.1:Determine regions (inside and outside)
-  #B.2:Determine correlation matrix
-  #B.3:Determine where are the matrix peaks located
-
-  #Dummy application draw a circle inside of the image
-  #img_out=img_in
-  #img_out$name="Output Image"
-  #center_xy=ceiling(img_out$size/2)
-  #radius=min(center_xy)/2
-
-  #SECTION C: REMOVE THE MATRIX PEAKS
-  #printv("SECTION C: Removing matrix peaks",0)
-
-  #SECTION D: STORE CLEAN IMAGE
-  #printv("SECTION D: Storing clean image",0)
-  #Plot 2 images
-  #rMSI::MSIWindow(img_in,img_out)
-}
-
-
 
