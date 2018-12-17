@@ -2,6 +2,7 @@
 
 export(printv)
 export(rcpp_hello)
+export(removeMatrix_compareAu)
 export(removeMatrix_padded)
 exportPattern("^[[:alpha:]]+")
 import(R.utils)

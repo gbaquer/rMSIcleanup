@@ -163,3 +163,80 @@ removeMatrix_padded <- function () {
   rMSIproc::plotPeakImage(pks_Norharmane_Final,c=2)
 }
 
+#' Remove Matrix Compare Au
+#'
+#' Remove the matrix by comparing anatomically similar regions of the tissue to a reference image taken
+#' with a gold matrix. Assesses the degree of similarity between peaks
+#' It takes a padded image where there is a wide enough region of pixels outside of the tissue.
+#' It consists of three basic steps.
+#'
+#' @return None
+#'
+#' @examples
+#' removeMatrix_compareAu()
+#'
+#' @export
+removeMatrix_compareAu <- function () {
+  #SECTION 0 :: Load peak matrix
+  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
+  pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
+
+  #SECTION 1:: Get regions of similarity
+  regions <- list(
+    num = 0,
+    centers_Norharmane = t(matrix(c(130,54,61,60,111,92,121,13,14,71,119,30,67,46), nrow=2)),
+    centers_Au =t(matrix(c(103,54,54,79,78,85,109,18,15,45,84,33,45,36), nrow=2)),
+    radial_point_Norharmane =t(matrix(c(137,47,56,85,112,87,121,4,5,71,114,27,68,41), nrow=2)),
+    radial_point_Au=t(matrix(c(106,63,56,83,76,79,110,9,8,41,80,33,43,30), nrow=2)),
+    radius_Norharmane =matrix(),
+    radius_Au =matrix(),
+    pixels_Norharmane =list(),
+    pixels_Au=list(),
+    mean_Norharmane=list(),
+    mean_Au=list()
+  )
+
+  regions$num=dim(regions$centers_Norharmane)[1]
+  regions$radius_Norharmane=sqrt(apply((regions$centers_Norharmane - regions$radial_point_Norharmane) ^ 2,1,sum))
+  regions$radius_Au=sqrt(apply((regions$centers_Au - regions$radial_point_Au) ^ 2,1,sum))
+
+  for (i in 1:regions$nu)
+  {
+    distance_Norharmane = sqrt(apply((regions$centers_Norharmane[i,] - pks_Norharmane$pos) ^ 2,1,sum))
+    regions$pixels_Norharmane[[paste("r",i,sep="_")]]=which(distance_Norharmane<regions$radius_Norharmane[i])
+
+    distance_Au = sqrt(apply((regions$centers_Au[i,] - pks_Au$pos) ^ 2,1,sum))
+    regions$pixels_Au[[paste("r",i,sep="_")]]=which(distance_Au<regions$radius_Au[i])
+  }
+
+  #SECTION 2:: Calculate, median and average spectrum
+  for (i in 1:regions$num)
+  {
+    regions$mean_Norharmane[[i]]=apply(pks_Norharmane$intensity[regions$pixels_Norharmane[[i]],],2,mean)
+    regions$mean_Au[[i]]=apply(pks_Au$intensity[regions$pixels_Au[[i]],],2,mean)
+  }
+  #In order to compare correlations they need to have the same size. Standardize and align spectra.
+  mass_threshold=0.2
+  masses=sort(unique(append(pks_Norharmane$mass,pks_Au$mass)))
+  masses_diff=abs(diff(masses))
+  masses_to_merge=which(masses_diff<mass_threshold)
+  merged_masses=masses
+  merged_masses[masses_to_merge]=(masses[masses_to_merge]+masses[masses_to_merge+1])/2
+  merged_masses[masses_to_merge+1]=(masses[masses_to_merge]+masses[masses_to_merge+1])/2
+  merged_masses=unique(merged_masses)
+  #The solution should be recursive
+  #create spectrum
+
+  #SECTION 3:: Calculate correlation of each peak.
+
+  #SECTION 4:: Remove peaks with negative correlation (assumed exogenous)
+
+  #Print image
+  rMSIproc::plotPeakImage(pks_Norharmane,c=2)
+}
+
+
+#CODE TO INCORPORATE
+#clus <- kmeans(pks_Norharmane$intensity, centers = 2)
+#rMSIproc::plotClusterImage(pks_Au, clus$cluster)
+
