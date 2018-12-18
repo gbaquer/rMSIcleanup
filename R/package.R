@@ -5,9 +5,11 @@
 #' @docType package
 #' @author Gerard Baquer Gómez
 #' @exportPattern "^[[:alpha:]]+"
-#' @import Rcpp R.utils rMSI rMSIproc gridExtra lattice
+#' @import Rcpp R.utils rMSI rMSIproc gridExtra lattice RColorBrewer
 #' @importFrom Rcpp evalCpp
-#' @importFrom stats cor cov
+#' @importFrom stats cor cov kmeans prcomp sd
+#' @importFrom graphics plot
+#' @importFrom grDevices dev.new palette
 #' @useDynLib rMSIcleanup, .registration = TRUE
 #' @name rMSIcleanup
 NULL

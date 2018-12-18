@@ -16,7 +16,11 @@ Imports:
   rMSI,
   rMSIproc,
   gridExtra,
-  lattice
+  lattice,
+  graphics,
+  stats,
+  grDevices,
+  RColorBrewer
 LinkingTo: Rcpp
 Suggests: 
     testthat

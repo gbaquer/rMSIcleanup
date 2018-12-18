@@ -34,6 +34,7 @@ library("rMSI")
 library("rMSIproc")
 library("lattice")
 library("gridExtra")
+library("RColorBrewer")
 
 #' Print verbose
 #'
@@ -184,10 +185,10 @@ removeMatrix_compareAu <- function () {
   #SECTION 1:: Get regions of similarity
   regions <- list(
     num = 0,
-    centers_Norharmane = t(matrix(c(130,54,61,60,111,92,121,13,14,71,119,30,67,46), nrow=2)),
-    centers_Au =t(matrix(c(103,54,54,79,78,85,109,18,15,45,84,33,45,36), nrow=2)),
-    radial_point_Norharmane =t(matrix(c(137,47,56,85,112,87,121,4,5,71,114,27,68,41), nrow=2)),
-    radial_point_Au=t(matrix(c(106,63,56,83,76,79,110,9,8,41,80,33,43,30), nrow=2)),
+    centers_Norharmane = t(matrix(c(130,54,61,60,111,92,14,71,119,30,67,46), nrow=2)),
+    centers_Au =t(matrix(c(103,54,54,79,78,85,15,45,84,33,45,36), nrow=2)),
+    radial_point_Norharmane =t(matrix(c(137,47,56,85,112,87,5,71,114,27,68,41), nrow=2)),
+    radial_point_Au=t(matrix(c(106,63,56,83,76,79,8,41,80,33,43,30), nrow=2)),
     radius_Norharmane =matrix(),
     radius_Au =matrix(),
     pixels_Norharmane =list(),
@@ -209,34 +210,190 @@ removeMatrix_compareAu <- function () {
     regions$pixels_Au[[paste("r",i,sep="_")]]=which(distance_Au<regions$radius_Au[i])
   }
 
-  #SECTION 2:: Calculate, median and average spectrum
+  # SECTION 2: Set the two images to have the same masses, Calibration, alignment
+  #In order to compare correlations they need to have the same size. Standardize and align spectra.
+  pks_Au_new=pks_Au
+  pks_Norharmane_new=pks_Norharmane
+
+  mass_threshold=2
+  masses= sort(union(pks_Norharmane$mass,pks_Au$mass))
+
+
+  indices_Au=rep(1,length(pks_Au$mass))
+  for(i in 1:length(pks_Au$mass))
+  {
+    indices_Au[i]=which(masses==pks_Au$mass[i])
+  }
+
+  indices_Norharmane=rep(1,length(pks_Norharmane$mass))
+  for(i in 1:length(pks_Norharmane$mass))
+  {
+    indices_Norharmane[i]=which(masses==pks_Norharmane$mass[i])
+  }
+
+  pks_Au_new$mass=masses
+  pks_Au_new$intensity=matrix(0,pks_Au_new$numPixels,length(masses))
+  pks_Au_new$area=matrix(0,pks_Au_new$numPixels,length(masses))
+  pks_Au_new$SNR=matrix(0,pks_Au_new$numPixels,length(masses))
+  pks_Au_new$intensity[,indices_Au]=pks_Au$intensity
+  pks_Au_new$area[,indices_Au]=pks_Au$area
+  pks_Au_new$SNR[,indices_Au]=pks_Au$SNR
+
+  pks_Norharmane_new$mass=masses
+  pks_Norharmane_new$intensity=matrix(0,pks_Norharmane_new$numPixels,length(masses))
+  pks_Norharmane_new$area=matrix(0,pks_Norharmane_new$numPixels,length(masses))
+  pks_Norharmane_new$SNR=matrix(0,pks_Norharmane_new$numPixels,length(masses))
+  pks_Norharmane_new$intensity[,indices_Norharmane]=pks_Norharmane$intensity
+  pks_Norharmane_new$area[,indices_Norharmane]=pks_Norharmane$area
+  pks_Norharmane_new$SNR[,indices_Norharmane]=pks_Norharmane$SNR
+
+  #Missing calibration and alignment
+  masses_to_merge=which(diff(masses)<mass_threshold)
+
+  pks_Au_new$intensity[,masses_to_merge]=pks_Au_new$intensity[,masses_to_merge]+pks_Au_new$intensity[,masses_to_merge+1]
+  pks_Au_new$area[,masses_to_merge]=pks_Au_new$area[,masses_to_merge]+pks_Au_new$area[,masses_to_merge+1]
+  pks_Au_new$SNR[,masses_to_merge]=pks_Au_new$SNR[,masses_to_merge]+pks_Au_new$SNR[,masses_to_merge+1]
+
+  pks_Norharmane_new$intensity[,masses_to_merge]=pks_Norharmane_new$intensity[,masses_to_merge]+pks_Norharmane_new$intensity[,masses_to_merge+1]
+  pks_Norharmane_new$area[,masses_to_merge]=pks_Norharmane_new$area[,masses_to_merge]+pks_Norharmane_new$area[,masses_to_merge+1]
+  pks_Norharmane_new$SNR[,masses_to_merge]=pks_Norharmane_new$SNR[,masses_to_merge]+pks_Norharmane_new$SNR[,masses_to_merge+1]
+
+  #SECTION 3:: Calculate, median and average spectrum
   for (i in 1:regions$num)
   {
-    regions$mean_Norharmane[[i]]=apply(pks_Norharmane$intensity[regions$pixels_Norharmane[[i]],],2,mean)
-    regions$mean_Au[[i]]=apply(pks_Au$intensity[regions$pixels_Au[[i]],],2,mean)
+    #regions$mean_Norharmane[[i]]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
+    #regions$mean_Au[[i]]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+
+    regions$mean_Norharmane[[i]]=pks_Norharmane_new$intensity[sample(1:length(regions$pixels_Norharmane[[i]]),3),]
+    regions$mean_Au[[i]]=pks_Au_new$intensity[sample(1:length(regions$pixels_Au[[i]]),3),]
   }
-  #In order to compare correlations they need to have the same size. Standardize and align spectra.
-  mass_threshold=0.2
-  masses=sort(unique(append(pks_Norharmane$mass,pks_Au$mass)))
-  masses_diff=abs(diff(masses))
-  masses_to_merge=which(masses_diff<mass_threshold)
-  merged_masses=masses
-  merged_masses[masses_to_merge]=(masses[masses_to_merge]+masses[masses_to_merge+1])/2
-  merged_masses[masses_to_merge+1]=(masses[masses_to_merge]+masses[masses_to_merge+1])/2
-  merged_masses=unique(merged_masses)
-  #The solution should be recursive
-  #create spectrum
-
-  #SECTION 3:: Calculate correlation of each peak.
-
-  #SECTION 4:: Remove peaks with negative correlation (assumed exogenous)
-
+  #SECTION 4:: Calculate correlation of each peak.
+  # for (i in 1:regions$num)
+  # {
+  #   #regions$mean_Norharmane[[i]]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
+  #   #regions$mean_Au[[i]]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+  #
+  #   regions$mean_Norharmane[[i]]=pks_Norharmane_new$intensity[sample(1:length(regions$pixels_Norharmane[[i]]),3),]
+  #   regions$mean_Au[[i]]=pks_Au_new$intensity[sample(1:length(regions$pixels_Au[[i]]),3),]
+  # }
+  #
+  #SECTION 5:: Remove peaks with negative correlation (assumed exogenous)
+  levelplot(cor(rbind(regions$mean_Norharmane[[1]],regions$mean_Au[[1]])))
   #Print image
-  rMSIproc::plotPeakImage(pks_Norharmane,c=2)
+  #rMSIproc::plotPeakImage(pks_Norharmane,c=2)
 }
 
+#' Remove Matrix k-Means Transpose
+#'
+#' Remove the matrix by performing k-means clustering on the transpose of the peak matrix.
+#' The algorithm identifies similar spectral peaks.
+#'
+#' @return None
+#'
+#' @examples
+#' removeMatrix_kMeansTranspose()
+#'
+#' @export
+removeMatrix_kMeansTranspose <- function () {
+
+  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
+  pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
+
+  pks_Norharmane=pks_Au
+  #scale abans del k-means
+  centers=10
+  data=scale((t((pks_Norharmane$intensity))))
+  clus <- kmeans(data, centers = centers)
+  pks_cluster_mean=pks_Norharmane
+  for(attr in attributes(pks_cluster_mean)$names)
+  {
+     pks_cluster_mean[[attr]]=double()
+  }
+  for(i in 1:centers )
+  {
+    #Compute average
+    spectra=matrix(0, dim(pks_Norharmane$intensity)[1],dim(pks_Norharmane$intensity)[2])
+    cluster_spectra=pks_Norharmane$intensity[,which(clus$cluster==i)]
+    if(!is.null(dim(cluster_spectra)))
+      spectra[,1]=apply(cluster_spectra,1,mean)
+    else
+      spectra[,1]=cluster_spectra
+    pks_cluster_mean$intensity=rbind(pks_cluster_mean$intensity,log(spectra))
+    for(attr in attributes(pks_cluster_mean)$names)
+    {
+      if(attr!="intensity")
+        pks_cluster_mean[[attr]]=rbind(pks_cluster_mean[[attr]],pks_Norharmane[[attr]])
+    }
+    #Show image
+    #grid.arrange(grob(rMSIproc::plotPeakImage(pks_cluster_mean,c=i)))
+  }
+  dev.new()
+  rMSIproc::plotPeakImage(pks_cluster_mean,c=1)
+
+  #Adjust color palette
+  palette(brewer.pal(n=centers,name = "Paired"))
+
+  #Perform & plot PCA
+  dev.new()
+  pca=prcomp(data)
+  #plot(pca$rotation) # loadings
+  plot(pca$x[,1:2],col=clus$cluster,xlab=paste("PC1",round(100*pca$sdev[1]/sum(pca$sdev),2),"%"),ylab=paste("PC2",round(100*pca$sdev[2]/sum(pca$sdev)),"%"),lwd=3)
+
+  #Intra-cluster variance
+  dev.new()
+  intracluster_sd=rep(0,centers)
+  for(i in 1:centers)
+    intracluster_sd[i]=sd(pks_Norharmane$intensity[,which(clus$cluster==i)])
+  plot(1:centers,log(intracluster_sd),type="h",col=1:centers,lwd = 10,lend=1)
+
+  #Cluster assignement
+  dev.new()
+  mean_spectra=apply(pks_Norharmane$intensity,2,mean)
+  plot(pks_Norharmane$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
+
+  #Volcano plot
+}
+
+# __ RANDOM CHUNCKS OF CODE __
 
 #CODE TO INCORPORATE
 #clus <- kmeans(pks_Norharmane$intensity, centers = 2)
 #rMSIproc::plotClusterImage(pks_Au, clus$cluster)
 
+# __ TRYING TO PLOT MULTIPLE IMAGES __
+
+# removeMatrix_kMeansTranspose <- function () {
+#   pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
+#   #scale abans del k-means
+#   centers=10
+#   clus <- kmeans(t(pks_Norharmane$intensity), centers = centers)
+#   pks_cluster_mean=pks_Norharmane
+#   for(i in 1:centers )
+#   {
+#     #Compute average
+#     spectra=matrix(0, dim(pks_Norharmane$intensity)[1],dim(pks_Norharmane$intensity)[2])
+#     cluster_spectra=pks_Norharmane$intensity[,which(clus$cluster==i)]
+#     if(!is.null(dim(cluster_spectra)))
+#       spectra[,1]=apply(cluster_spectra,1,mean)
+#     else
+#       spectra[,1]=cluster_spectra
+#     pks_cluster_mean$intensity=append(pks_cluster_mean$intensity,spectra)
+#     for(attr in attributes(pks_cluster_mean)$names)
+#     {
+#       if(attr!="intensity")
+#         pks_cluster_mean[[attr]]=cbind(pks_cluster_mean[[attr]],pks_Norharmane[[attr]])
+#     }
+#     #Show image
+#     #grid.arrange(grob(rMSIproc::plotPeakImage(pks_cluster_mean,c=i)))
+#   }
+#   rMSIproc::plotPeakImage(pks_cluster_mean,c=1)
+# }
+
+# __ CALIBRATION AND ALIGNMENT __
+# masses_diff=abs(diff(masses))
+# masses_to_merge=which(masses_diff<mass_threshold)
+# merged_masses=masses
+# merged_masses[masses_to_merge]=(masses[masses_to_merge]+masses[masses_to_merge+1])/2
+# merged_masses[masses_to_merge+1]=(masses[masses_to_merge]+masses[masses_to_merge+1])/2
+# merged_masses=unique(merged_masses)
+#The solution should be recursive
