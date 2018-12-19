@@ -62,6 +62,33 @@ printv <- function(message,level) {
     print(message)
   }
 }
+#' Plot image summary
+#'
+#' Plot the eman spectra and a few representative images of the two MSI images used.
+#'
+#' @return None
+#'
+#' @examples
+#' plot_image_summary()
+#'
+#' @export
+plot_image_summary <- function () {
+  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
+  pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
+
+  mean_Norharmane=apply(pks_Norharmane$intensity,2,mean,lwd = 3,lend=1)
+  mean_Au=apply(pks_Au$intensity,2,mean,lwd = 3,lend=1)
+
+  plot(pks_Norharmane$mass,mean_Norharmane,type="h",col=1)
+  lines(pks_Au$mass,mean_Au,type="h",col=2)
+
+
+  pks_Norharmane_plot=pks_Norharmane
+  pks_Au_plot=pks_Au
+
+  pks_Norharmane_plot[,1]=
+  pks_Au_plot[,1]=
+}
 
 #' Remove Matrix Padded
 #'
@@ -76,6 +103,7 @@ printv <- function(message,level) {
 #'
 #' @export
 removeMatrix_padded <- function () {
+
   #SECTION 0 :: Load peak matrix
   pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
   pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
@@ -94,11 +122,11 @@ removeMatrix_padded <- function () {
   #Compute and plot covariance and correlation
   covMAT=cov(pks_Norharmane$intensity)
   corMAT=cor(pks_Norharmane$intensity)
-  grid.arrange(levelplot(covMAT))
-  grid.arrange(levelplot(corMAT))
+  # grid.arrange(levelplot(covMAT))
+  # grid.arrange(levelplot(corMAT))
 
   #Rank correlation of exo indices [IMPROVE: get the "max_exo" elements that correlate the best to the three of them]
-  max_exo=10
+  max_exo=5
   top_exo_mat=integer()
   for (i in exo_is)
     top_exo_mat=cbind(top_exo_mat,sort(corMAT[i,],decreasing=TRUE,index.return=TRUE)$ix)
@@ -160,8 +188,40 @@ removeMatrix_padded <- function () {
   #Smoothing
   #[To Be Implemented]
 
+
+
+  palette(brewer.pal(n=centers,name = "Paired"))
+
+  #Plot average spectra
+  dev.new()
+  mean_spectra=apply(pks_Norharmane$intensity,2,mean)
+  colors=rep(1,length(mean_spectra))
+  colors[nonbio_peaks]=2
+  colors[bio_peaks[nonanatomical_peaks]]=3
+
+  plot(pks_Norharmane$mass,mean_spectra,type="h",col=colors,lwd = 3,lend=1)
+  legend(1000, 30, legend=c("Endogenous", "Matrix","Non-anatomical"),
+         col=colors)
+
+
   #Print image
-  rMSIproc::plotPeakImage(pks_Norharmane_Final,c=2)
+  pks_Norharmane_plot=pks_Norharmane
+  pks_Norharmane_plot$intensity[,1]=(apply(pks_Norharmane$intensity[,bio_peaks[anatomical_peaks]],1,mean))
+  pks_Norharmane_plot$intensity[,2]=(apply(pks_Norharmane$intensity[,nonbio_peaks],1,mean))
+  pks_Norharmane_plot$intensity[,3]=(apply(pks_Norharmane$intensity[,bio_peaks[nonanatomical_peaks]],1,mean))
+  pks_Norharmane_plot$intensity[,4]=(apply(pks_Norharmane$intensity[,union(nonbio_peaks,bio_peaks[nonanatomical_peaks])],1,mean))
+  dev.new()
+  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=1)
+  title("Endogenous peaks")
+  dev.new()
+  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=2)
+  title("Matrix peaks")
+  dev.new()
+  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=3)
+  title("Non-anaotomical peaks")
+  dev.new()
+  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=4)
+  title("Matrix + Non-anaotomical peaks")
 }
 
 #' Remove Matrix Compare Au
@@ -299,7 +359,7 @@ removeMatrix_kMeansTranspose <- function () {
   pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
   pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
 
-  pks_Norharmane=pks_Au
+  #pks_Norharmane=pks_Au
   #scale abans del k-means
   centers=10
   data=scale((t((pks_Norharmane$intensity))))
