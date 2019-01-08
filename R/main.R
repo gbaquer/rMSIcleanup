@@ -72,6 +72,41 @@ printv <- function(message,level) {
 #' plot_image_summary()
 #'
 #' @export
+plot_TIC <- function () {
+  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
+  pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
+
+  # TIC_Norharmane=apply(pks_Norharmane$intensity,2,sum)
+  # TIC_Au=apply(pks_Au$intensity,2,sum)
+
+  # plot(pks_Norharmane$mass,mean_Norharmane,type="h",col=1)
+  # lines(pks_Au$mass,mean_Au,type="h",col=2)
+
+
+  pks_Norharmane_plot=pks_Norharmane
+  pks_Au_plot=pks_Au
+
+  pks_Norharmane_plot$intensity[,1]=(apply(pks_Norharmane$intensity,1,sum))
+  pks_Au_plot$intensity[,1]=(apply(pks_Au$intensity,1,sum))
+
+  dev.new()
+  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=1)
+  title("Norharmane")
+
+  dev.new()
+  rMSIproc::plotPeakImage(pks_Au_plot,c=1)
+  title("Au")
+}
+#' Plot image summary
+#'
+#' Plot the eman spectra and a few representative images of the two MSI images used.
+#'
+#' @return None
+#'
+#' @examples
+#' plot_image_summary()
+#'
+#' @export
 plot_image_summary <- function () {
   pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
   pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
@@ -86,8 +121,16 @@ plot_image_summary <- function () {
   pks_Norharmane_plot=pks_Norharmane
   pks_Au_plot=pks_Au
 
-  pks_Norharmane_plot[,1]=
-  pks_Au_plot[,1]=
+  pks_Norharmane_plot$intensity[,1]=(apply(pks_Norharmane$intensity,1,mean))
+  pks_Au_plot$intensity[,1]=(apply(pks_Au$intensity,1,mean))
+
+  dev.new()
+  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=1)
+  title("Norharmane")
+
+  dev.new()
+  rMSIproc::plotPeakImage(pks_Au_plot,c=1)
+  title("Au")
 }
 
 #' Remove Matrix Padded
@@ -188,8 +231,7 @@ removeMatrix_padded <- function () {
   #Smoothing
   #[To Be Implemented]
 
-
-
+  centers=10
   palette(brewer.pal(n=centers,name = "Paired"))
 
   #Plot average spectra
@@ -338,7 +380,11 @@ removeMatrix_compareAu <- function () {
   # }
   #
   #SECTION 5:: Remove peaks with negative correlation (assumed exogenous)
-  levelplot(cor(rbind(regions$mean_Norharmane[[1]],regions$mean_Au[[1]])))
+  for (i in 1:regions$num)
+  {
+    dev.new()
+    levelplot(cor(rbind(regions$mean_Norharmane[[i]],regions$mean_Au[[i]])))
+  }
   #Print image
   #rMSIproc::plotPeakImage(pks_Norharmane,c=2)
 }
@@ -412,6 +458,114 @@ removeMatrix_kMeansTranspose <- function () {
   plot(pks_Norharmane$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
 
   #Volcano plot
+}
+
+#' Remove Matrix k-Means Transpose based on correlation
+#'
+#' Remove the matrix by performing k-means clustering on the transpose of the correlation of the peak matrix.
+#' The algorithm identifies similar spectral peaks.
+#'
+#' @return None
+#'
+#' @examples
+#' removeMatrix_kMeansTransposeCor()
+#'
+#' @export
+removeMatrix_kMeansTransposeCor <- function () {
+
+  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
+
+  #Proposed procedure
+  #dev.new()
+  centers=10
+  norm_data=pks_Norharmane$intensity/pks_Norharmane$normalizations$TIC
+  cor_data=cor(norm_data)
+  scaled_data=scale(cor_data)
+  dev.new()
+  levelplot(scaled_data)
+  #clustering
+  clus <- kmeans(scaled_data, centers = centers)
+
+  #Calculate mean spectra of each cluster for plotting
+  pks_cluster_mean=pks_Norharmane
+  for(attr in attributes(pks_cluster_mean)$names)
+  {
+    pks_cluster_mean[[attr]]=double()
+  }
+  for(i in 1:centers )
+  {
+    #Compute average
+    spectra=matrix(0, dim(pks_Norharmane$intensity)[1],dim(pks_Norharmane$intensity)[2])
+    cluster_spectra=pks_Norharmane$intensity[,which(clus$cluster==i)]
+    if(!is.null(dim(cluster_spectra)))
+      spectra[,1]=apply(cluster_spectra,1,mean)
+    else
+      spectra[,1]=cluster_spectra
+    pks_cluster_mean$intensity=rbind(pks_cluster_mean$intensity,log(spectra))
+    for(attr in attributes(pks_cluster_mean)$names)
+    {
+      if(attr!="intensity")
+        pks_cluster_mean[[attr]]=rbind(pks_cluster_mean[[attr]],pks_Norharmane[[attr]])
+    }
+    #Show image
+    #grid.arrange(grob(rMSIproc::plotPeakImage(pks_cluster_mean,c=i)))
+  }
+  dev.new()
+  rMSIproc::plotPeakImage(pks_cluster_mean,c=1)
+
+  #Adjust color palette
+  palette(brewer.pal(n=centers,name = "Paired"))
+
+  #Perform & plot PCA
+  dev.new()
+  pca=prcomp(scaled_data)
+  #plot(pca$rotation) # loadings
+  plot(pca$x[,1:2],col=clus$cluster,xlab=paste("PC1",round(100*pca$sdev[1]/sum(pca$sdev),2),"%"),ylab=paste("PC2",round(100*pca$sdev[2]/sum(pca$sdev)),"%"),lwd=3)
+
+  #Intra-cluster variance
+  dev.new()
+  intracluster_sd=rep(0,centers)
+  for(i in 1:centers)
+    intracluster_sd[i]=sd(pks_Norharmane$intensity[,which(clus$cluster==i)])
+  plot(1:centers,log(intracluster_sd),type="h",col=1:centers,lwd = 10,lend=1)
+
+  #Cluster assignement
+  dev.new()
+  mean_spectra=apply(pks_Norharmane$intensity,2,mean)
+  plot(pks_Norharmane$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
+
+  #Volcano plot
+}
+
+#' Cross validation.
+#'
+#' Compare the results of all methods to assess consistency.
+#'
+#' @return None
+#'
+#' @examples
+#' removeMatrix_kMeansTransposeCor()
+#'
+#' @export
+cross_validation <- function () {
+  #METHOD 1
+  #METHOD 2
+  #METHOD 3
+  #METHOD 4
+  print(return_2())
+  #COMPARE RESULTS
+
+}
+
+#' Return 2
+#'
+#' Dummy function
+#'
+#' @return None
+#'
+#' @export
+return_2 <- function() {
+  return(2)
 }
 
 # __ RANDOM CHUNCKS OF CODE __
