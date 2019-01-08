@@ -12,7 +12,3 @@ None
 \description{
 Plot the eman spectra and a few representative images of the two MSI images used.
 }
-\examples{
-plot_image_summary()
-
-}

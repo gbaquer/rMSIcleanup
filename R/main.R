@@ -68,8 +68,6 @@ printv <- function(message,level) {
 #'
 #' @return None
 #'
-#' @examples
-#' plot_image_summary()
 #'
 #' @export
 plot_TIC <- function () {
@@ -103,8 +101,6 @@ plot_TIC <- function () {
 #'
 #' @return None
 #'
-#' @examples
-#' plot_image_summary()
 #'
 #' @export
 plot_image_summary <- function () {
@@ -143,8 +139,6 @@ plot_image_summary <- function () {
 #'
 #' @return None
 #'
-#' @examples
-#' removeMatrix_padded()
 #'
 #' @export
 removeMatrix_padded <- function (pks_Norharmane) {
@@ -270,12 +264,11 @@ removeMatrix_padded <- function (pks_Norharmane) {
 #' It takes a padded image where there is a wide enough region of pixels outside of the tissue.
 #' It consists of three basic steps.
 #'
+#' @param pks_Au Peak Matrix with gold coating
 #' @inherit removeMatrix_padded
 #'
 #' @return None
 #'
-#' @examples
-#' removeMatrix_compareAu()
 #'
 #' @export
 removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
@@ -393,8 +386,6 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
 #'
 #' @return None
 #'
-#' @examples
-#' removeMatrix_kMeansTranspose()
 #'
 #' @export
 removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
@@ -462,8 +453,6 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
 #'
 #' @return None
 #'
-#' @examples
-#' removeMatrix_kMeansTransposeCor()
 #'
 #' @export
 removeMatrix_kMeansTransposeCor <- function (pks_Norharmane) {
@@ -535,8 +524,6 @@ removeMatrix_kMeansTransposeCor <- function (pks_Norharmane) {
 #'
 #' @return None
 #'
-#' @examples
-#' removeMatrix_kMeansTransposeCor()
 #'
 #' @export
 cross_validation <- function () {

@@ -16,7 +16,3 @@ None
 Remove the matrix by performing k-means clustering on the transpose of the correlation of the peak matrix.
 The algorithm identifies similar spectral peaks.
 }
-\examples{
-removeMatrix_kMeansTransposeCor()
-
-}

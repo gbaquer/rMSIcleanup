@@ -8,6 +8,8 @@ removeMatrix_compareAu(pks_Norharmane, pks_Au)
 }
 \arguments{
 \item{pks_Norharmane}{Peak Matrix}
+
+\item{pks_Au}{Peak Matrix with gold coating}
 }
 \value{
 None
@@ -17,8 +19,4 @@ Remove the matrix by comparing anatomically similar regions of the tissue to a r
 with a gold matrix. Assesses the degree of similarity between peaks
 It takes a padded image where there is a wide enough region of pixels outside of the tissue.
 It consists of three basic steps.
-}
-\examples{
-removeMatrix_compareAu()
-
 }

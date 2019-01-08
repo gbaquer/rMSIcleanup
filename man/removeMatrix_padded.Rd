@@ -17,7 +17,3 @@ Remove the matrix following the method presented by Fonville et al. 2012.
 It takes a padded image where there is a wide enough region of pixels outside of the tissue.
 It consists of three basic steps.
 }
-\examples{
-removeMatrix_padded()
-
-}

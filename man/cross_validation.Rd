@@ -12,7 +12,3 @@ None
 \description{
 Compare the results of all methods to assess consistency.
 }
-\examples{
-removeMatrix_kMeansTransposeCor()
-
-}
