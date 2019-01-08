@@ -4,7 +4,10 @@
 \alias{removeMatrix_kMeansTransposeCor}
 \title{Remove Matrix k-Means Transpose based on correlation}
 \usage{
-removeMatrix_kMeansTransposeCor()
+removeMatrix_kMeansTransposeCor(pks_Norharmane)
+}
+\arguments{
+\item{pks_Norharmane}{Peak Matrix}
 }
 \value{
 None

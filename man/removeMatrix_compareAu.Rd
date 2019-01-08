@@ -4,7 +4,10 @@
 \alias{removeMatrix_compareAu}
 \title{Remove Matrix Compare Au}
 \usage{
-removeMatrix_compareAu()
+removeMatrix_compareAu(pks_Norharmane, pks_Au)
+}
+\arguments{
+\item{pks_Norharmane}{Peak Matrix}
 }
 \value{
 None

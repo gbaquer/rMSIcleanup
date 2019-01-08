@@ -4,7 +4,10 @@
 \alias{removeMatrix_padded}
 \title{Remove Matrix Padded}
 \usage{
-removeMatrix_padded()
+removeMatrix_padded(pks_Norharmane)
+}
+\arguments{
+\item{pks_Norharmane}{Peak Matrix}
 }
 \value{
 None

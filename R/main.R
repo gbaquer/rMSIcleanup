@@ -139,18 +139,15 @@ plot_image_summary <- function () {
 #' It takes a padded image where there is a wide enough region of pixels outside of the tissue.
 #' It consists of three basic steps.
 #'
+#' @param pks_Norharmane Peak Matrix
+#'
 #' @return None
 #'
 #' @examples
 #' removeMatrix_padded()
 #'
 #' @export
-removeMatrix_padded <- function () {
-
-  #SECTION 0 :: Load peak matrix
-  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
-  pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
-
+removeMatrix_padded <- function (pks_Norharmane) {
   #SECTION 1:: Peak Selection
 
   #Approach A: Use of matrix peaks to remove nonbiological variables
@@ -273,17 +270,15 @@ removeMatrix_padded <- function () {
 #' It takes a padded image where there is a wide enough region of pixels outside of the tissue.
 #' It consists of three basic steps.
 #'
+#' @inherit removeMatrix_padded
+#'
 #' @return None
 #'
 #' @examples
 #' removeMatrix_compareAu()
 #'
 #' @export
-removeMatrix_compareAu <- function () {
-  #SECTION 0 :: Load peak matrix
-  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
-  pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
-
+removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
   #SECTION 1:: Get regions of similarity
   regions <- list(
     num = 0,
@@ -394,17 +389,15 @@ removeMatrix_compareAu <- function () {
 #' Remove the matrix by performing k-means clustering on the transpose of the peak matrix.
 #' The algorithm identifies similar spectral peaks.
 #'
+#' @inherit removeMatrix_padded
+#'
 #' @return None
 #'
 #' @examples
 #' removeMatrix_kMeansTranspose()
 #'
 #' @export
-removeMatrix_kMeansTranspose <- function () {
-
-  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
-  pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
-
+removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
   #pks_Norharmane=pks_Au
   #scale abans del k-means
   centers=10
@@ -465,16 +458,15 @@ removeMatrix_kMeansTranspose <- function () {
 #' Remove the matrix by performing k-means clustering on the transpose of the correlation of the peak matrix.
 #' The algorithm identifies similar spectral peaks.
 #'
+#' @inherit removeMatrix_padded
+#'
 #' @return None
 #'
 #' @examples
 #' removeMatrix_kMeansTransposeCor()
 #'
 #' @export
-removeMatrix_kMeansTransposeCor <- function () {
-
-  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
-
+removeMatrix_kMeansTransposeCor <- function (pks_Norharmane) {
   #Proposed procedure
   #dev.new()
   centers=10
@@ -548,11 +540,18 @@ removeMatrix_kMeansTransposeCor <- function () {
 #'
 #' @export
 cross_validation <- function () {
+  #LOAD DATA
+  pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
+  pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
+
   #METHOD 1
+  removeMatrix_padded(pks_Norharmane)
   #METHOD 2
+  removeMatrix_compareAu(pks_Norharmane,pks_Au)
   #METHOD 3
-  #METHOD 4
-  print(return_2())
+  removeMatrix_kMeansTranspose(pks_Norharmane)
+  #METHOD 3.1
+  removeMatrix_kMeansTransposeCor(pks_Norharmane)
   #COMPARE RESULTS
 
 }
