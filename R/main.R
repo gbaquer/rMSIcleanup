@@ -35,6 +35,7 @@ library("rMSIproc")
 library("lattice")
 library("gridExtra")
 library("RColorBrewer")
+library("GlobalOptions")
 
 #' Print verbose
 #'
@@ -62,6 +63,15 @@ printv <- function(message,level) {
     print(message)
   }
 }
+#' Verbose level global variable
+#'
+#'  1: Silent
+#'  0: Application messages
+#' -1: Code Sections
+#' -2: Code subsections
+#' -3: Debug mode
+pkg_opt= set_opt(verbose_level=0)
+
 #' Plot image summary
 #'
 #' Plot the eman spectra and a few representative images of the two MSI images used.
@@ -222,39 +232,43 @@ removeMatrix_padded <- function (pks_Norharmane) {
   #Smoothing
   #[To Be Implemented]
 
-  centers=10
-  palette(brewer.pal(n=centers,name = "Paired"))
+  #Plotting results
+  if(pkg_opt()$verbose_level<=-1)
+  {
+    centers=10
+    palette(brewer.pal(n=centers,name = "Paired"))
 
-  #Plot average spectra
-  dev.new()
-  mean_spectra=apply(pks_Norharmane$intensity,2,mean)
-  colors=rep(1,length(mean_spectra))
-  colors[nonbio_peaks]=2
-  colors[bio_peaks[nonanatomical_peaks]]=3
+    #Plot average spectra
+    dev.new()
+    mean_spectra=apply(pks_Norharmane$intensity,2,mean)
+    colors=rep(1,length(mean_spectra))
+    colors[nonbio_peaks]=2
+    colors[bio_peaks[nonanatomical_peaks]]=3
 
-  plot(pks_Norharmane$mass,mean_spectra,type="h",col=colors,lwd = 3,lend=1)
-  legend(1000, 30, legend=c("Endogenous", "Matrix","Non-anatomical"),
-         col=colors)
+    plot(pks_Norharmane$mass,mean_spectra,type="h",col=colors,lwd = 3,lend=1)
+    legend(1000, 30, legend=c("Endogenous", "Matrix","Non-anatomical"),
+           col=colors)
 
 
-  #Print image
-  pks_Norharmane_plot=pks_Norharmane
-  pks_Norharmane_plot$intensity[,1]=(apply(pks_Norharmane$intensity[,bio_peaks[anatomical_peaks]],1,mean))
-  pks_Norharmane_plot$intensity[,2]=(apply(pks_Norharmane$intensity[,nonbio_peaks],1,mean))
-  pks_Norharmane_plot$intensity[,3]=(apply(pks_Norharmane$intensity[,bio_peaks[nonanatomical_peaks]],1,mean))
-  pks_Norharmane_plot$intensity[,4]=(apply(pks_Norharmane$intensity[,union(nonbio_peaks,bio_peaks[nonanatomical_peaks])],1,mean))
-  dev.new()
-  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=1)
-  title("Endogenous peaks")
-  dev.new()
-  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=2)
-  title("Matrix peaks")
-  dev.new()
-  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=3)
-  title("Non-anaotomical peaks")
-  dev.new()
-  rMSIproc::plotPeakImage(pks_Norharmane_plot,c=4)
-  title("Matrix + Non-anaotomical peaks")
+    #Print image
+    pks_Norharmane_plot=pks_Norharmane
+    pks_Norharmane_plot$intensity[,1]=(apply(pks_Norharmane$intensity[,bio_peaks[anatomical_peaks]],1,mean))
+    pks_Norharmane_plot$intensity[,2]=(apply(pks_Norharmane$intensity[,nonbio_peaks],1,mean))
+    pks_Norharmane_plot$intensity[,3]=(apply(pks_Norharmane$intensity[,bio_peaks[nonanatomical_peaks]],1,mean))
+    pks_Norharmane_plot$intensity[,4]=(apply(pks_Norharmane$intensity[,union(nonbio_peaks,bio_peaks[nonanatomical_peaks])],1,mean))
+    dev.new()
+    rMSIproc::plotPeakImage(pks_Norharmane_plot,c=1)
+    title("Endogenous peaks")
+    dev.new()
+    rMSIproc::plotPeakImage(pks_Norharmane_plot,c=2)
+    title("Matrix peaks")
+    dev.new()
+    rMSIproc::plotPeakImage(pks_Norharmane_plot,c=3)
+    title("Non-anaotomical peaks")
+    dev.new()
+    rMSIproc::plotPeakImage(pks_Norharmane_plot,c=4)
+    title("Matrix + Non-anaotomical peaks")
+  }
 
   #Return the peaks corresponding to the matrix
   return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
@@ -389,32 +403,32 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
   #   regions$mean_Au[[i]]=pks_Au_new$intensity[sample(1:length(regions$pixels_Au[[i]]),3),]
   # }
   #
-  #SECTION 5:: Remove peaks with negative correlation (assumed exogenous)
-  # for (i in 1:regions$num)
-  # {
-  #   dev.new()
-  #   levelplot(cor(rbind(regions$mean_Norharmane[[i]],regions$mean_Au[[i]])))
-  # }
+
   correlation_vector=array(0,c(1,length(masses)))
   for(i in 1:length(masses))
   {
     correlation_vector[i]=cor(regions$mean_Norharmane[,i],regions$mean_Au[,i])
   }
   correlation_threshold=0.8
-  return(indices_Norharmane_backwards[which(correlation_vector>correlation_threshold)])
-  #Print image
-  #rMSIproc::plotPeakImage(pks_Norharmane,c=2)
 
-  #Return the peaks corresponding to the matrix according to region 1
-  # correlation_results<-cor(rbind(regions$mean_Norharmane[[1]],regions$mean_Au[[1]]))
-  # d<-density(correlation_results)
-  # dev.new()
-  # levelplot(correlation_results)
-  # dev.new()
-  # plot(d)
-  #
-  # correlation_threshold=0.9
-  # return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
+  #Plotting results
+  if(pkg_opt()$verbose_level<=-1)
+  {
+    #SECTION 5:: Remove peaks with negative correlation (assumed exogenous)
+    # for (i in 1:regions$num)
+    # {
+    #   dev.new()
+    #   levelplot(cor(rbind(regions$mean_Norharmane[[i]],regions$mean_Au[[i]])))
+    # }
+
+    # d<-density(correlation_results)
+    # dev.new()
+    # levelplot(correlation_results)
+    # dev.new()
+    # plot(d)
+  }
+
+  return(indices_Norharmane_backwards[which(correlation_vector>correlation_threshold)])
 }
 
 #' Remove Matrix k-Means Transpose
@@ -456,29 +470,32 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
     #Show image
     #grid.arrange(grob(rMSIproc::plotPeakImage(pks_cluster_mean,c=i)))
   }
-  dev.new()
-  rMSIproc::plotPeakImage(pks_cluster_mean,c=1)
+  if(pkg_opt()$verbose_level<=-1)
+  {
+    dev.new()
+    rMSIproc::plotPeakImage(pks_cluster_mean,c=1)
 
-  #Adjust color palette
-  palette(brewer.pal(n=centers,name = "Paired"))
+    #Adjust color palette
+    palette(brewer.pal(n=centers,name = "Paired"))
 
-  #Perform & plot PCA
-  dev.new()
-  pca=prcomp(data)
-  #plot(pca$rotation) # loadings
-  plot(pca$x[,1:2],col=clus$cluster,xlab=paste("PC1",round(100*pca$sdev[1]/sum(pca$sdev),2),"%"),ylab=paste("PC2",round(100*pca$sdev[2]/sum(pca$sdev)),"%"),lwd=3)
+    #Perform & plot PCA
+    dev.new()
+    pca=prcomp(data)
+    #plot(pca$rotation) # loadings
+    plot(pca$x[,1:2],col=clus$cluster,xlab=paste("PC1",round(100*pca$sdev[1]/sum(pca$sdev),2),"%"),ylab=paste("PC2",round(100*pca$sdev[2]/sum(pca$sdev)),"%"),lwd=3)
 
-  #Intra-cluster variance
-  dev.new()
-  intracluster_sd=rep(0,centers)
-  for(i in 1:centers)
-    intracluster_sd[i]=sd(pks_Norharmane$intensity[,which(clus$cluster==i)])
-  plot(1:centers,log(intracluster_sd),type="h",col=1:centers,lwd = 10,lend=1)
+    #Intra-cluster variance
+    dev.new()
+    intracluster_sd=rep(0,centers)
+    for(i in 1:centers)
+      intracluster_sd[i]=sd(pks_Norharmane$intensity[,which(clus$cluster==i)])
+    plot(1:centers,log(intracluster_sd),type="h",col=1:centers,lwd = 10,lend=1)
 
-  #Cluster assignement
-  dev.new()
-  mean_spectra=apply(pks_Norharmane$intensity,2,mean)
-  plot(pks_Norharmane$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
+    #Cluster assignement
+    dev.new()
+    mean_spectra=apply(pks_Norharmane$intensity,2,mean)
+    plot(pks_Norharmane$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
+  }
 
   #Volcano plot
   #Return the peaks corresponding to the matrix
