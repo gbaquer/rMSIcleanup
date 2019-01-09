@@ -70,7 +70,22 @@ printv <- function(message,level) {
 #' -1: Code Sections
 #' -2: Code subsections
 #' -3: Debug mode
-pkg_opt= set_opt(verbose_level=0)
+#'
+#' @param ... Options to change
+#' @param RESET Reset the package options to the default
+#' @param READ.ONLY Return only the READ.ONLY options
+#' @param LOCAL Change to from global to local mode when TRUE and change from local to global mode when FALSE. In the local mode a copy of the options is created and the copy is modified.
+#' @param ADD Add a new option on the fly
+
+pkg_opt= set_opt(
+  verbose_level=list(.value=1,
+                     .read.only=FALSE,
+                     .validate= function(x) is.numeric(x) && x%%1==0 && x>=-3 && x<=1,
+                     .failed_msg = "Verbose should be an integer in the range [-3,1]",
+                     .description = "Verbose level determining which level of information is printed or plotted"
+                     )
+  # verbose_level=0
+  )
 
 #' Plot image summary
 #'
