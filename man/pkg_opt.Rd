@@ -2,7 +2,7 @@
 % Please edit documentation in R/main.R
 \name{pkg_opt}
 \alias{pkg_opt}
-\title{Verbose level global variable}
+\title{Package Global Options}
 \usage{
 pkg_opt(..., RESET = FALSE, READ.ONLY = NULL, LOCAL = FALSE,
   ADD = FALSE)
@@ -19,9 +19,17 @@ pkg_opt(..., RESET = FALSE, READ.ONLY = NULL, LOCAL = FALSE,
 \item{ADD}{Add a new option on the fly}
 }
 \description{
-1: Silent
- 0: Application messages
--1: Code Sections
--2: Code subsections
--3: Debug mode
+Global options used by the package
 }
+\section{verbose_level}{
+
+Verbose level determining which level of information is printed or plotted
+\itemize{
+ \item  1: Silent
+ \item  0: Application messages
+ \item -1: Code Sections
+ \item -2: Code subsections
+ \item -3: Debug mode
+}
+}
+

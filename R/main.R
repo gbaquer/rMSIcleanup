@@ -16,9 +16,6 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ############################################################################
 
-# You can learn more about package authoring with RStudio at:
-#
-#   http://r-pkgs.had.co.nz/
 #
 #   Load function:             'Ctrl + Shift + L'
 #   Build and Reload Package:  'Ctrl + Shift + B'
@@ -28,48 +25,22 @@
 #
 #   Comment/Uncomment:         'Ctrl + Shift + C'
 
-#LOAD LIBRARIES
-library("R.utils")
-library("rMSI")
-library("rMSIproc")
-library("lattice")
-library("gridExtra")
-library("RColorBrewer")
-library("GlobalOptions")
+############################################################################
 
-#' Print verbose
+#' Package Global Options
 #'
-#' Print \code{message} if the verbose \code{level} is higher than the specified \code{threshold}.
+#' Global options used by the package
 #'
-#'  1: Silent
-#'  0: Application messages
-#' -1: Code Sections
-#' -2: Code subsections
-#' -3: Debug mode
-#'
-#' @param message String to print out
-#' @param level Verbose level
-#'
-#' @return None
-#'
-#' @examples
-#' printv("Hello World!",0)
-#'
-#' @export
-printv <- function(message,level) {
-  threshold=0
-  if(level>=threshold)
-  {
-    print(message)
-  }
-}
-#' Verbose level global variable
-#'
-#'  1: Silent
-#'  0: Application messages
-#' -1: Code Sections
-#' -2: Code subsections
-#' -3: Debug mode
+#' @section verbose_level:
+#' Verbose level determining which level of information is printed or plotted
+#' \itemize{
+#'  \item  1: Silent
+#'  \item  0: Application messages
+#'  \item -1: Code Sections
+#'  \item -2: Code subsections
+#'  \item -3: Debug mode
+#' }
+
 #'
 #' @param ... Options to change
 #' @param RESET Reset the package options to the default
@@ -84,7 +55,6 @@ pkg_opt= set_opt(
                      .failed_msg = "Verbose should be an integer in the range [-3,1]",
                      .description = "Verbose level determining which level of information is printed or plotted"
                      )
-  # verbose_level=0
   )
 
 #' Plot image summary
@@ -620,25 +590,22 @@ cross_validation <- function () {
 
 }
 
-#' Return 2
-#'
-#' Dummy function
-#'
-#' @return None
-#'
-#' @export
-return_2 <- function() {
-  return(2)
-}
-
 # __ RANDOM CHUNCKS OF CODE __
-
 #CODE TO INCORPORATE
 #clus <- kmeans(pks_Norharmane$intensity, centers = 2)
 #rMSIproc::plotClusterImage(pks_Au, clus$cluster)
 
-# __ TRYING TO PLOT MULTIPLE IMAGES __
+# __ LOADING THE LIBRARIES DOESN'T SEEM TO BE NECESSARY
+#LOAD LIBRARIES
+# library("R.utils")
+# library("rMSI")
+# library("rMSIproc")
+# library("lattice")
+# library("gridExtra")
+# library("RColorBrewer")
+# library("GlobalOptions")
 
+# __ TRYING TO PLOT MULTIPLE IMAGES __
 # removeMatrix_kMeansTranspose <- function () {
 #   pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
 #   #scale abans del k-means
@@ -674,3 +641,31 @@ return_2 <- function() {
 # merged_masses[masses_to_merge+1]=(masses[masses_to_merge]+masses[masses_to_merge+1])/2
 # merged_masses=unique(merged_masses)
 #The solution should be recursive
+
+# __ OLD IMPLEMENTATION OF VERBOSE __
+# #' Print verbose
+# #'
+# #' Print \code{message} if the verbose \code{level} is higher than the specified \code{threshold}.
+# #'
+# #'  1: Silent
+# #'  0: Application messages
+# #' -1: Code Sections
+# #' -2: Code subsections
+# #' -3: Debug mode
+# #'
+# #' @param message String to print out
+# #' @param level Verbose level
+# #'
+# #' @return None
+# #'
+# #' @examples
+# #' printv("Hello World!",0)
+# #'
+# #' @export
+# printv <- function(message,level) {
+#   threshold=0
+#   if(level>=threshold)
+#   {
+#     print(message)
+#   }
+# }
