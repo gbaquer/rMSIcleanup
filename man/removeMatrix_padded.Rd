@@ -10,7 +10,7 @@ removeMatrix_padded(pks_Norharmane)
 \item{pks_Norharmane}{Peak Matrix}
 }
 \value{
-None
+List of mass indices corresponding to the matrix peaks
 }
 \description{
 Remove the matrix following the method presented by Fonville et al. 2012.

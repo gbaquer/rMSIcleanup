@@ -12,7 +12,7 @@ removeMatrix_compareAu(pks_Norharmane, pks_Au)
 \item{pks_Au}{Peak Matrix with gold coating}
 }
 \value{
-None
+List of mass indices corresponding to the matrix peaks
 }
 \description{
 Remove the matrix by comparing anatomically similar regions of the tissue to a reference image taken

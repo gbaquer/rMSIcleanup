@@ -10,7 +10,7 @@ removeMatrix_kMeansTransposeCor(pks_Norharmane)
 \item{pks_Norharmane}{Peak Matrix}
 }
 \value{
-None
+List of mass indices corresponding to the matrix peaks
 }
 \description{
 Remove the matrix by performing k-means clustering on the transpose of the correlation of the peak matrix.

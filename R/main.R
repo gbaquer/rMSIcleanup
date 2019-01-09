@@ -137,7 +137,7 @@ plot_image_summary <- function () {
 #'
 #' @param pks_Norharmane Peak Matrix
 #'
-#' @return None
+#' @return List of mass indices corresponding to the matrix peaks
 #'
 #'
 #' @export
@@ -255,6 +255,9 @@ removeMatrix_padded <- function (pks_Norharmane) {
   dev.new()
   rMSIproc::plotPeakImage(pks_Norharmane_plot,c=4)
   title("Matrix + Non-anaotomical peaks")
+
+  #Return the peaks corresponding to the matrix
+  return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
 }
 
 #' Remove Matrix Compare Au
@@ -267,7 +270,6 @@ removeMatrix_padded <- function (pks_Norharmane) {
 #' @param pks_Au Peak Matrix with gold coating
 #' @inherit removeMatrix_padded
 #'
-#' @return None
 #'
 #'
 #' @export
@@ -283,8 +285,8 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
     radius_Au =matrix(),
     pixels_Norharmane =list(),
     pixels_Au=list(),
-    mean_Norharmane=list(),
-    mean_Au=list()
+    mean_Norharmane=array(),
+    mean_Au=array()
   )
 
   regions$num=dim(regions$centers_Norharmane)[1]
@@ -321,6 +323,20 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
     indices_Norharmane[i]=which(masses==pks_Norharmane$mass[i])
   }
 
+  indices_Norharmane_backwards=rep(1,length(masses))
+  for(i in 1:length(masses))
+  {
+    index=which(pks_Norharmane$mass==masses[i])
+    if(length(index)>0)
+    {
+      indices_Norharmane_backwards[i]=index
+    }
+    else
+    {
+      indices_Norharmane_backwards[i]=NA
+    }
+  }
+
   pks_Au_new$mass=masses
   pks_Au_new$intensity=matrix(0,pks_Au_new$numPixels,length(masses))
   pks_Au_new$area=matrix(0,pks_Au_new$numPixels,length(masses))
@@ -349,13 +365,19 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
   pks_Norharmane_new$SNR[,masses_to_merge]=pks_Norharmane_new$SNR[,masses_to_merge]+pks_Norharmane_new$SNR[,masses_to_merge+1]
 
   #SECTION 3:: Calculate, median and average spectrum
+  regions$mean_Norharmane=array(0,c(regions$num,length(masses)))
+  regions$mean_Au=array(0,c(regions$num,length(masses)))
+
   for (i in 1:regions$num)
   {
-    #regions$mean_Norharmane[[i]]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
-    #regions$mean_Au[[i]]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+    # regions$mean_Norharmane=rbind(regions$mean_Norharmane,apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean))
+    # regions$mean_Au=rbind(regions$mean_Au,apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean))
 
-    regions$mean_Norharmane[[i]]=pks_Norharmane_new$intensity[sample(1:length(regions$pixels_Norharmane[[i]]),3),]
-    regions$mean_Au[[i]]=pks_Au_new$intensity[sample(1:length(regions$pixels_Au[[i]]),3),]
+    regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
+    regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+
+    # regions$mean_Norharmane[i,]=pks_Norharmane_new$intensity[sample(regions$pixels_Norharmane[[i]],3),]
+    # regions$mean_Au[i,]=pks_Au_new$intensity[sample(regions$pixels_Au[[i]],3),]
   }
   #SECTION 4:: Calculate correlation of each peak.
   # for (i in 1:regions$num)
@@ -368,13 +390,31 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
   # }
   #
   #SECTION 5:: Remove peaks with negative correlation (assumed exogenous)
-  for (i in 1:regions$num)
+  # for (i in 1:regions$num)
+  # {
+  #   dev.new()
+  #   levelplot(cor(rbind(regions$mean_Norharmane[[i]],regions$mean_Au[[i]])))
+  # }
+  correlation_vector=array(0,c(1,length(masses)))
+  for(i in 1:length(masses))
   {
-    dev.new()
-    levelplot(cor(rbind(regions$mean_Norharmane[[i]],regions$mean_Au[[i]])))
+    correlation_vector[i]=cor(regions$mean_Norharmane[,i],regions$mean_Au[,i])
   }
+  correlation_threshold=0.8
+  return(indices_Norharmane_backwards[which(correlation_vector>correlation_threshold)])
   #Print image
   #rMSIproc::plotPeakImage(pks_Norharmane,c=2)
+
+  #Return the peaks corresponding to the matrix according to region 1
+  # correlation_results<-cor(rbind(regions$mean_Norharmane[[1]],regions$mean_Au[[1]]))
+  # d<-density(correlation_results)
+  # dev.new()
+  # levelplot(correlation_results)
+  # dev.new()
+  # plot(d)
+  #
+  # correlation_threshold=0.9
+  # return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
 }
 
 #' Remove Matrix k-Means Transpose
@@ -384,7 +424,6 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
 #'
 #' @inherit removeMatrix_padded
 #'
-#' @return None
 #'
 #'
 #' @export
@@ -442,6 +481,9 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
   plot(pks_Norharmane$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
 
   #Volcano plot
+  #Return the peaks corresponding to the matrix
+  # correlation_threshold=0.7
+  # return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
 }
 
 #' Remove Matrix k-Means Transpose based on correlation
@@ -451,7 +493,6 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
 #'
 #' @inherit removeMatrix_padded
 #'
-#' @return None
 #'
 #'
 #' @export
@@ -516,6 +557,10 @@ removeMatrix_kMeansTransposeCor <- function (pks_Norharmane) {
   plot(pks_Norharmane$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
 
   #Volcano plot
+
+  #Return the peaks corresponding to the matrix
+  # correlation_threshold=0.7
+  # return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
 }
 
 #' Cross validation.
