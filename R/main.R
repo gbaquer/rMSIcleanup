@@ -132,7 +132,7 @@ plot_image_summary <- function () {
 #'
 #' @param pks_Norharmane Peak Matrix
 #'
-#' @return List of mass indices corresponding to the matrix peaks
+#' @return List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
 #'
 #'
 #' @export
@@ -255,16 +255,14 @@ removeMatrix_padded <- function (pks_Norharmane) {
     title("Matrix + Non-anaotomical peaks")
   }
 
-  #Return the peaks corresponding to the matrix
-  return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
+  #Return the peaks considered endogenous
+  return(bio_peaks[anatomical_peaks])
 }
 
 #' Remove Matrix Compare Au
 #'
 #' Remove the matrix by comparing anatomically similar regions of the tissue to a reference image taken
-#' with a gold matrix. Assesses the degree of similarity between peaks
-#' It takes a padded image where there is a wide enough region of pixels outside of the tissue.
-#' It consists of three basic steps.
+#' with a gold matrix. Assesses the degree of similarity between peaks.
 #'
 #' @param pks_Au Peak Matrix with gold coating
 #' @inherit removeMatrix_padded
@@ -301,15 +299,14 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
     regions$pixels_Au[[paste("r",i,sep="_")]]=which(distance_Au<regions$radius_Au[i])
   }
 
-  # SECTION 2: Set the two images to have the same masses, Calibration, alignment
-  #In order to compare correlations they need to have the same size. Standardize and align spectra.
+  # SECTION 2: Make the two images have the same masses vector, calibration & alignment
+  #2.1 : Find new masses vector
   pks_Au_new=pks_Au
   pks_Norharmane_new=pks_Norharmane
 
-  mass_threshold=2
   masses= sort(union(pks_Norharmane$mass,pks_Au$mass))
 
-
+  #2.2 : Create vectors to determine from where does each mass come from
   indices_Au=rep(1,length(pks_Au$mass))
   for(i in 1:length(pks_Au$mass))
   {
@@ -336,6 +333,7 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
     }
   }
 
+  #2.3 : Create new images with the updated masses vector
   pks_Au_new$mass=masses
   pks_Au_new$intensity=matrix(0,pks_Au_new$numPixels,length(masses))
   pks_Au_new$area=matrix(0,pks_Au_new$numPixels,length(masses))
@@ -352,68 +350,67 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
   pks_Norharmane_new$area[,indices_Norharmane]=pks_Norharmane$area
   pks_Norharmane_new$SNR[,indices_Norharmane]=pks_Norharmane$SNR
 
-  #Missing calibration and alignment
+  #2.4:[MISSING] Label free calibration and alignment
+
+  #2.5: Merge masses under the tolerance
+  mass_threshold=2
   masses_to_merge=which(diff(masses)<mass_threshold)
 
   pks_Au_new$intensity[,masses_to_merge]=pks_Au_new$intensity[,masses_to_merge]+pks_Au_new$intensity[,masses_to_merge+1]
   pks_Au_new$area[,masses_to_merge]=pks_Au_new$area[,masses_to_merge]+pks_Au_new$area[,masses_to_merge+1]
   pks_Au_new$SNR[,masses_to_merge]=pks_Au_new$SNR[,masses_to_merge]+pks_Au_new$SNR[,masses_to_merge+1]
+  pks_Au_new$intensity[,masses_to_merge+1]=pks_Au_new$intensity[,masses_to_merge]
+  pks_Au_new$area[,masses_to_merge+1]=pks_Au_new$area[,masses_to_merge]
+  pks_Au_new$SNR[,masses_to_merge+1]=pks_Au_new$SNR[,masses_to_merge]
 
   pks_Norharmane_new$intensity[,masses_to_merge]=pks_Norharmane_new$intensity[,masses_to_merge]+pks_Norharmane_new$intensity[,masses_to_merge+1]
   pks_Norharmane_new$area[,masses_to_merge]=pks_Norharmane_new$area[,masses_to_merge]+pks_Norharmane_new$area[,masses_to_merge+1]
   pks_Norharmane_new$SNR[,masses_to_merge]=pks_Norharmane_new$SNR[,masses_to_merge]+pks_Norharmane_new$SNR[,masses_to_merge+1]
+  pks_Norharmane_new$intensity[,masses_to_merge+1]=pks_Norharmane_new$intensity[,masses_to_merge]
+  pks_Norharmane_new$area[,masses_to_merge+1]=pks_Norharmane_new$area[,masses_to_merge]
+  pks_Norharmane_new$SNR[,masses_to_merge+1]=pks_Norharmane_new$SNR[,masses_to_merge]
 
-  #SECTION 3:: Calculate, median and average spectrum
+  #SECTION 3:: Calculate average spectrum
+  # [ALTERNATIVE] Sample each region instead of taking the mean
   regions$mean_Norharmane=array(0,c(regions$num,length(masses)))
   regions$mean_Au=array(0,c(regions$num,length(masses)))
 
   for (i in 1:regions$num)
   {
-    # regions$mean_Norharmane=rbind(regions$mean_Norharmane,apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean))
-    # regions$mean_Au=rbind(regions$mean_Au,apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean))
-
     regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
     regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
-
-    # regions$mean_Norharmane[i,]=pks_Norharmane_new$intensity[sample(regions$pixels_Norharmane[[i]],3),]
-    # regions$mean_Au[i,]=pks_Au_new$intensity[sample(regions$pixels_Au[[i]],3),]
   }
-  #SECTION 4:: Calculate correlation of each peak.
-  # for (i in 1:regions$num)
-  # {
-  #   #regions$mean_Norharmane[[i]]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
-  #   #regions$mean_Au[[i]]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
-  #
-  #   regions$mean_Norharmane[[i]]=pks_Norharmane_new$intensity[sample(1:length(regions$pixels_Norharmane[[i]]),3),]
-  #   regions$mean_Au[[i]]=pks_Au_new$intensity[sample(1:length(regions$pixels_Au[[i]]),3),]
-  # }
-  #
 
+  #SECTION 4:: Calculate correlation of each peak.
   correlation_vector=array(0,c(1,length(masses)))
   for(i in 1:length(masses))
   {
     correlation_vector[i]=cor(regions$mean_Norharmane[,i],regions$mean_Au[,i])
   }
-  correlation_threshold=0.8
 
-  #Plotting results
+  correlation_threshold=0.7
+
+  #Return the Norharmane indices that have a higher correlation than the defined correlation_threshold
+  indices_result=indices_Norharmane_backwards[which(correlation_vector>correlation_threshold)]
+
+  indices_result=indices_result[!is.na(indices_result)] #Remove NA values
+  correlation_vector=correlation_vector[!is.na(correlation_vector)] #Remove NA values
+
+
+  #SECTION 5:: Plotting results
   if(pkg_opt()$verbose_level<=-1)
   {
-    #SECTION 5:: Remove peaks with negative correlation (assumed exogenous)
-    # for (i in 1:regions$num)
-    # {
-    #   dev.new()
-    #   levelplot(cor(rbind(regions$mean_Norharmane[[i]],regions$mean_Au[[i]])))
-    # }
-
-    # d<-density(correlation_results)
-    # dev.new()
-    # levelplot(correlation_results)
+    # d<-density(correlation_vector)
     # dev.new()
     # plot(d)
+    # [IMPROVE] The plot should show correlation vs mass
+    dev.new()
+    barplot(masses,correlation_vector)
+    dev.new()
+    hist(correlation_vector,breaks=100)
   }
 
-  return(indices_Norharmane_backwards[which(correlation_vector>correlation_threshold)])
+  return(indices_result)
 }
 
 #' Remove Matrix k-Means Transpose
@@ -421,22 +418,36 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
 #' Remove the matrix by performing k-means clustering on the transpose of the peak matrix.
 #' The algorithm identifies similar spectral peaks.
 #'
+#' @param correlation Binary valiable determining whether to use the correlation of the raw data or the raw data
+#' @param normalization Binary variable determining whether to normalize the data or not. TIC normalization is used.
 #' @inherit removeMatrix_padded
 #'
 #'
 #'
 #' @export
-removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
-  #pks_Norharmane=pks_Au
-  #scale abans del k-means
+removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,normalization=TRUE) {
+
+  # SECTION 1 :: Preprocessing
+  data=pks_Norharmane$intensity
+  if(normalization)
+    data=data/pks_Norharmane$normalizations$TIC #normalization
+  if(correlation)
+    data=cor(data) #correlation
+  data=t(data) #transpose
+  data=scale(data) #scale
+
+  # data=scale((t((pks_Norharmane$intensity))))
+
+  # SECTION 2 :: Clustering
   centers=10
-  data=scale((t((pks_Norharmane$intensity))))
   clus <- kmeans(data, centers = centers)
   pks_cluster_mean=pks_Norharmane
   for(attr in attributes(pks_cluster_mean)$names)
   {
      pks_cluster_mean[[attr]]=double()
   }
+
+  # SECTION 3 :: Concatenate peak matrices for plotting
   for(i in 1:centers )
   {
     #Compute average
@@ -446,7 +457,6 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
       spectra[,1]=apply(cluster_spectra,1,mean)
     else
       spectra[,1]=cluster_spectra
-    pks_cluster_mean$intensity=rbind(pks_cluster_mean$intensity,log(spectra))
     for(attr in attributes(pks_cluster_mean)$names)
     {
       if(attr!="intensity")
@@ -455,10 +465,12 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
     #Show image
     #grid.arrange(grob(rMSIproc::plotPeakImage(pks_cluster_mean,c=i)))
   }
+
+  # SECTION 4 :: Plotting
   if(pkg_opt()$verbose_level<=-1)
   {
     dev.new()
-    rMSIproc::plotPeakImage(pks_cluster_mean,c=1)
+    #rMSIproc::plotPeakImage(pks_cluster_mean,c=1)
 
     #Adjust color palette
     palette(brewer.pal(n=centers,name = "Paired"))
@@ -480,88 +492,14 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane) {
     dev.new()
     mean_spectra=apply(pks_Norharmane$intensity,2,mean)
     plot(pks_Norharmane$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
+
+    #Volcano plot
   }
 
-  #Volcano plot
-  #Return the peaks corresponding to the matrix
-  # correlation_threshold=0.7
-  # return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
-}
 
-#' Remove Matrix k-Means Transpose based on correlation
-#'
-#' Remove the matrix by performing k-means clustering on the transpose of the correlation of the peak matrix.
-#' The algorithm identifies similar spectral peaks.
-#'
-#' @inherit removeMatrix_padded
-#'
-#'
-#'
-#' @export
-removeMatrix_kMeansTransposeCor <- function (pks_Norharmane) {
-  #Proposed procedure
-  #dev.new()
-  centers=10
-  norm_data=pks_Norharmane$intensity/pks_Norharmane$normalizations$TIC
-  cor_data=cor(norm_data)
-  scaled_data=scale(cor_data)
-  dev.new()
-  levelplot(scaled_data)
-  #clustering
-  clus <- kmeans(scaled_data, centers = centers)
 
-  #Calculate mean spectra of each cluster for plotting
-  pks_cluster_mean=pks_Norharmane
-  for(attr in attributes(pks_cluster_mean)$names)
-  {
-    pks_cluster_mean[[attr]]=double()
-  }
-  for(i in 1:centers )
-  {
-    #Compute average
-    spectra=matrix(0, dim(pks_Norharmane$intensity)[1],dim(pks_Norharmane$intensity)[2])
-    cluster_spectra=pks_Norharmane$intensity[,which(clus$cluster==i)]
-    if(!is.null(dim(cluster_spectra)))
-      spectra[,1]=apply(cluster_spectra,1,mean)
-    else
-      spectra[,1]=cluster_spectra
-    pks_cluster_mean$intensity=rbind(pks_cluster_mean$intensity,log(spectra))
-    for(attr in attributes(pks_cluster_mean)$names)
-    {
-      if(attr!="intensity")
-        pks_cluster_mean[[attr]]=rbind(pks_cluster_mean[[attr]],pks_Norharmane[[attr]])
-    }
-    #Show image
-    #grid.arrange(grob(rMSIproc::plotPeakImage(pks_cluster_mean,c=i)))
-  }
-  dev.new()
-  rMSIproc::plotPeakImage(pks_cluster_mean,c=1)
 
-  #Adjust color palette
-  palette(brewer.pal(n=centers,name = "Paired"))
-
-  #Perform & plot PCA
-  dev.new()
-  pca=prcomp(scaled_data)
-  #plot(pca$rotation) # loadings
-  plot(pca$x[,1:2],col=clus$cluster,xlab=paste("PC1",round(100*pca$sdev[1]/sum(pca$sdev),2),"%"),ylab=paste("PC2",round(100*pca$sdev[2]/sum(pca$sdev)),"%"),lwd=3)
-
-  #Intra-cluster variance
-  dev.new()
-  intracluster_sd=rep(0,centers)
-  for(i in 1:centers)
-    intracluster_sd[i]=sd(pks_Norharmane$intensity[,which(clus$cluster==i)])
-  plot(1:centers,log(intracluster_sd),type="h",col=1:centers,lwd = 10,lend=1)
-
-  #Cluster assignement
-  dev.new()
-  mean_spectra=apply(pks_Norharmane$intensity,2,mean)
-  plot(pks_Norharmane$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
-
-  #Volcano plot
-
-  #Return the peaks corresponding to the matrix
-  # correlation_threshold=0.7
+  #[MISSING] RETURN
   # return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
 }
 
@@ -579,15 +517,29 @@ cross_validation <- function () {
   pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
 
   #METHOD 1
-  removeMatrix_padded(pks_Norharmane)
+  m1_indices=removeMatrix_padded(pks_Norharmane)
+  m1_masses=pks_Norharmane$mass[m1_indices]
   #METHOD 2
-  removeMatrix_compareAu(pks_Norharmane,pks_Au)
-  #METHOD 3
-  removeMatrix_kMeansTranspose(pks_Norharmane)
-  #METHOD 3.1
-  removeMatrix_kMeansTransposeCor(pks_Norharmane)
+  m2_indices=removeMatrix_compareAu(pks_Norharmane,pks_Au)
+  m2_masses=pks_Norharmane$mass[m2_indices]
+  # #METHOD 3
+  # removeMatrix_kMeansTranspose(pks_Norharmane)
+  # #METHOD 3.1
+  # removeMatrix_kMeansTransposeCor(pks_Norharmane)
   #COMPARE RESULTS
 
+  #PRINT REPORT
+  print("METHOD 1: PADDED")
+  print(m1_indices)
+  print(m1_masses)
+  print("METHOD 2: COMPARE AU")
+  print(m2_indices)
+  print(m2_masses)
+  print("SIMILARITIES M1-M2")
+  print(length(intersect(m1_indices,m2_indices)))
+  distance_matrix=abs(outer(m1_masses,m2_masses,'-'))
+  print(sort(distance_matrix))
+  print(distance_matrix)
 }
 
 # __ RANDOM CHUNCKS OF CODE __
@@ -604,6 +556,28 @@ cross_validation <- function () {
 # library("gridExtra")
 # library("RColorBrewer")
 # library("GlobalOptions")
+
+# __ CODE FROM METHOD 2 COMPARE AU __
+# for (i in 1:regions$num)
+# {
+#   # regions$mean_Norharmane=rbind(regions$mean_Norharmane,apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean))
+#   # regions$mean_Au=rbind(regions$mean_Au,apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean))
+#
+#   regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
+#   regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+#
+#   # regions$mean_Norharmane[i,]=pks_Norharmane_new$intensity[sample(regions$pixels_Norharmane[[i]],3),]
+#   # regions$mean_Au[i,]=pks_Au_new$intensity[sample(regions$pixels_Au[[i]],3),]
+# }
+# for (i in 1:regions$num)
+# {
+#   #regions$mean_Norharmane[[i]]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
+#   #regions$mean_Au[[i]]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+#
+#   regions$mean_Norharmane[[i]]=pks_Norharmane_new$intensity[sample(1:length(regions$pixels_Norharmane[[i]]),3),]
+#   regions$mean_Au[[i]]=pks_Au_new$intensity[sample(1:length(regions$pixels_Au[[i]]),3),]
+# }
+#
 
 # __ TRYING TO PLOT MULTIPLE IMAGES __
 # removeMatrix_kMeansTranspose <- function () {
