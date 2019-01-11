@@ -10,7 +10,7 @@ removeMatrix_padded(pks_Norharmane)
 \item{pks_Norharmane}{Peak Matrix}
 }
 \value{
-List of mass indices corresponding to the matrix peaks
+List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
 }
 \description{
 Remove the matrix following the method presented by Fonville et al. 2012.

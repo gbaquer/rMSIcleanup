@@ -4,13 +4,18 @@
 \alias{removeMatrix_kMeansTranspose}
 \title{Remove Matrix k-Means Transpose}
 \usage{
-removeMatrix_kMeansTranspose(pks_Norharmane)
+removeMatrix_kMeansTranspose(pks_Norharmane, correlation = FALSE,
+  normalization = TRUE)
 }
 \arguments{
 \item{pks_Norharmane}{Peak Matrix}
+
+\item{correlation}{Binary valiable determining whether to use the correlation of the raw data or the raw data}
+
+\item{normalization}{Binary variable determining whether to normalize the data or not. TIC normalization is used.}
 }
 \value{
-List of mass indices corresponding to the matrix peaks
+List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
 }
 \description{
 Remove the matrix by performing k-means clustering on the transpose of the peak matrix.

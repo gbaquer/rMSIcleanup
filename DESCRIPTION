@@ -21,7 +21,9 @@ Imports:
   stats,
   grDevices,
   RColorBrewer,
-  GlobalOptions
+  GlobalOptions,
+  XML,
+  base64enc
 LinkingTo: Rcpp
 Suggests: 
     testthat

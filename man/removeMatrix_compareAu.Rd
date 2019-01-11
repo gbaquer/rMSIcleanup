@@ -4,19 +4,19 @@
 \alias{removeMatrix_compareAu}
 \title{Remove Matrix Compare Au}
 \usage{
-removeMatrix_compareAu(pks_Norharmane, pks_Au)
+removeMatrix_compareAu(pks_Norharmane, pks_Au, use_average = FALSE)
 }
 \arguments{
 \item{pks_Norharmane}{Peak Matrix}
 
 \item{pks_Au}{Peak Matrix with gold coating}
+
+\item{use_average}{Use average of each region if true. Use all the pixels in the region if false.}
 }
 \value{
-List of mass indices corresponding to the matrix peaks
+List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
 }
 \description{
 Remove the matrix by comparing anatomically similar regions of the tissue to a reference image taken
-with a gold matrix. Assesses the degree of similarity between peaks
-It takes a padded image where there is a wide enough region of pixels outside of the tissue.
-It consists of three basic steps.
+with a gold matrix. Assesses the degree of similarity between peaks.
 }

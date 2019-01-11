@@ -265,12 +265,13 @@ removeMatrix_padded <- function (pks_Norharmane) {
 #' with a gold matrix. Assesses the degree of similarity between peaks.
 #'
 #' @param pks_Au Peak Matrix with gold coating
+#' @param use_average Use average of each region if true. Use all the pixels in the region if false.
 #' @inherit removeMatrix_padded
 #'
 #'
 #'
 #' @export
-removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
+removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE) {
   #SECTION 1:: Get regions of similarity
   regions <- list(
     num = 0,
@@ -377,8 +378,18 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au) {
 
   for (i in 1:regions$num)
   {
-    regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
-    regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+    if(use_average)
+    {
+      regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
+      regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+    }
+    else
+    {
+      #PENDING IMPLEMENTATION OF THE SAMPLING WITH THE LOWEST NUMBER OF PIXELS
+      regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
+      regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+    }
+
   }
 
   #SECTION 4:: Calculate correlation of each peak.
@@ -447,6 +458,11 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,norma
      pks_cluster_mean[[attr]]=double()
   }
 
+  #Intracluster standard deviation
+  intracluster_sd=rep(0,centers)
+  for(i in 1:centers)
+    intracluster_sd[i]=sd(pks_Norharmane$intensity[,which(clus$cluster==i)])
+
   # SECTION 3 :: Concatenate peak matrices for plotting
   for(i in 1:centers )
   {
@@ -466,6 +482,8 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,norma
     #grid.arrange(grob(rMSIproc::plotPeakImage(pks_cluster_mean,c=i)))
   }
 
+
+
   # SECTION 4 :: Plotting
   if(pkg_opt()$verbose_level<=-1)
   {
@@ -483,9 +501,6 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,norma
 
     #Intra-cluster variance
     dev.new()
-    intracluster_sd=rep(0,centers)
-    for(i in 1:centers)
-      intracluster_sd[i]=sd(pks_Norharmane$intensity[,which(clus$cluster==i)])
     plot(1:centers,log(intracluster_sd),type="h",col=1:centers,lwd = 10,lend=1)
 
     #Cluster assignement
@@ -496,11 +511,11 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,norma
     #Volcano plot
   }
 
-
-
-
   #[MISSING] RETURN
   # return(union(nonbio_peaks,bio_peaks[nonanatomical_peaks]))
+  sd_threshold=2
+  a=which(intracluster_sd<sd_threshold)
+  return(a)
 }
 
 #' Cross validation.
@@ -542,6 +557,67 @@ cross_validation <- function () {
   print(distance_matrix)
 }
 
+#' Export to mmass
+#'
+#' Exports the results to a text file which can be read by mmass for easy interpretation and validation of the results.
+#'
+#' @param pks_Matrix Peak matrix
+#' @param matrix_annotation Vector determining whether each peak in the spectrum corresponds to the matrix or the tissue
+#' @param metadata List containing metadata on the matrix annotation process
+#'
+#' @return None
+#'
+#'
+#' @export
+export_mmass <- function (pks_Matrix,matrix_annotation=FALSE,metadata=FALSE) {
+  library(XML)
+  #Calculate mean spectra
+  mean_spectra=apply(pks_Matrix$intensity,2,mean)
+  #Create table
+  export_table=data.frame(mass=pks_Matrix$mass,intensity=mean_spectra)
+  #Write txt file
+  write.table(export_table, file = "output/mean_spectra.txt", sep = "\t", row.names=FALSE, col.names=FALSE)
+  #Compress spectrum
+  # intArray=memCompress(as.character(mean_spectra),"xz")
+  # mzArray=memCompress(as.character(pks_Matrix$mass),"xz")
+  intArray=base64encode(paste(mean_spectra,collapse = " "))
+  mzArray=base64encode(paste(pks_Matrix$mass,collapse = " "))
+
+  #Write msd file
+  xml <- xmlTree()
+  # names(xml)
+  xml$addTag("mSD", close=FALSE, attrs=c(version="2.2"))
+  #Description
+  xml$addTag("description", close=FALSE)
+  xml$addTag("title","MATRIX_ANNOTATION_REPORT")
+  xml$addTag("date", attrs=c(value=Sys.time()))
+  xml$addTag("operator", attrs=c(value=""))
+  xml$addTag("contact", attrs=c(value="Gerard Baquer Gomez (gerard.baquer@urv.cat)"))
+  xml$addTag("institution", attrs=c(value="MIL@B (URV)"))
+  xml$addTag("instrument", attrs=c(value=""))
+  xml$addTag("notes","THIS SPACE IS RESERVED FOR NOTES")
+  xml$closeTag()
+
+  #Spectrum
+  xml$addTag("spectrum",attrs=c(points=(length(mean_spectra))), close=FALSE)
+  xml$addTag("mzArray", mzArray, attrs=c(precision="32", endian="little"))
+  xml$addTag("intArray",intArray, attrs=c(precision="32", endian="little"))
+  xml$closeTag()
+
+  #Peaklist
+
+  #Annotations
+
+  # for (i in 1:3) {
+  #   xml$addTag("page", close=FALSE)
+  #   for (j in 1:2) {
+  #     xml$addTag(j, "BLAH")
+  #   }
+  #   xml$closeTag()
+  # }
+  xml$closeTag()
+  saveXML(xml,"output/mean_spectra.msd",prefix='<?xml version="1.0" encoding="utf-8" ?>\n')
+}
 # __ RANDOM CHUNCKS OF CODE __
 #CODE TO INCORPORATE
 #clus <- kmeans(pks_Norharmane$intensity, centers = 2)
