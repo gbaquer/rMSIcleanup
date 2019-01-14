@@ -569,20 +569,50 @@ cross_validation <- function () {
 #'
 #'
 #' @export
-export_mmass <- function (pks_Matrix,matrix_annotation=FALSE,metadata=FALSE) {
+export_mmass <- function (pks_Matrix,matrix_annotation=rep("HI",length(pks_Matrix$mass)),metadata=FALSE) {
   #Calculate mean spectra
   mean_spectra=apply(pks_Matrix$intensity,2,mean)
+  masses=lapply(pks_Matrix$mass,function(x) x)
   #Create table
   export_table=data.frame(mass=pks_Matrix$mass,intensity=mean_spectra)
   #Write txt file
-  write.table(export_table, file = "output/mean_spectra.txt", sep = "\t", row.names=FALSE, col.names=FALSE)
-  #Compress spectrum
-  # intArray=memCompress(as.character(mean_spectra),"xz")
-  # mzArray=memCompress(as.character(pks_Matrix$mass),"xz")
-  intArray=base64encode(paste(mean_spectra,collapse = " "))
-  mzArray=base64encode(paste(pks_Matrix$mass,collapse = " "))
+  write.table(export_table, file = "output/output.txt", sep = "\t", row.names=FALSE, col.names=FALSE)
 
-  #Write msd file
+  #IMPORT PYTHON MODULES
+  struct=reticulate::import("struct")
+  zlib=reticulate::import("zlib")
+  base64=reticulate::import("base64")
+
+  #CONVERT TO BINARY WITH THE PROPER UTF ENCODING
+  intArray=""
+  mzArray=""
+  for (i in 1:(length(mean_spectra))) {
+    tryCatch({
+      tmp1=iconv(struct$pack("f",as.single(mean_spectra[i])))
+      tmp2=iconv(struct$pack("f",as.single(masses[i])))
+    },
+    error=function(cond) {
+      message("Skipped one peak")
+      message(cond)
+      tmp1=0
+      tmp2=0
+    },
+    finally = function(cond){
+      intArray=paste(intArray,tmp1,sep = "")
+      mzArray=paste(mzArray,tmp2,sep = "")
+    }
+    )
+  }
+
+  # COMPRESSION [IT FAILS PROBABLY DUE TO ENCODING ISSUES AGAIN]
+  # intArray=zlib$compress(intArray)
+  # mzArray=zlib$compress(mzArray)
+
+  #BASE 64 ENCODING
+  mzArray = base64$b64encode(mzArray)
+  intArray = base64$b64encode(intArray)
+
+  #WRITE mSD FILE
   xml <- XML::xmlTree()
   # names(xml)
   xml$addTag("mSD", close=FALSE, attrs=c(version="2.2"))
@@ -599,24 +629,37 @@ export_mmass <- function (pks_Matrix,matrix_annotation=FALSE,metadata=FALSE) {
 
   #Spectrum
   xml$addTag("spectrum",attrs=c(points=(length(mean_spectra))), close=FALSE)
+  #xml$addTag("spectrum",attrs=c(points=1), close=FALSE)
   xml$addTag("mzArray", mzArray, attrs=c(precision="32", endian="little"))
   xml$addTag("intArray",intArray, attrs=c(precision="32", endian="little"))
   xml$closeTag()
 
   #Peaklist
+  #[THE PEAK LIST WILL PROBABLY INCLUDE THE PEAK MATRIX WHEN THE FUNCTION IS UPGRADED TO INCLUDE THE FULL SPECTRUM]
 
   #Annotations
-
-  # for (i in 1:3) {
-  #   xml$addTag("page", close=FALSE)
-  #   for (j in 1:2) {
-  #     xml$addTag(j, "BLAH")
-  #   }
-  #   xml$closeTag()
-  # }
+  xml$addTag("annotations", close=FALSE)
+  for (i in 1:(length(mean_spectra))) {
+      xml$addTag("annotation", matrix_annotation[i], attrs=c(peakMZ=masses[i], peakIntensity=mean_spectra[i]))
+  }
   xml$closeTag()
-  saveXML(xml,"output/mean_spectra.msd",prefix='<?xml version="1.0" encoding="utf-8" ?>\n')
+
+  #Save document
+  xml$closeTag()
+  saveXML(xml,"output/output.msd",prefix='<?xml version="1.0" encoding="utf-8" ?>\n')
 }
+
+# __ HELPER FUNCTIONS __
+#' Specify decimal
+#'
+#' Exports the results to a text file which can be read by mmass for easy interpretation and validation of the results.
+#'
+#' @param x Input double
+#' @param k Precision
+#'
+#' @return x with k precision
+specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
+
 # __ RANDOM CHUNCKS OF CODE __
 #CODE TO INCORPORATE
 #clus <- kmeans(pks_Norharmane$intensity, centers = 2)

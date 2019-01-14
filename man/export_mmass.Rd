@@ -4,7 +4,8 @@
 \alias{export_mmass}
 \title{Export to mmass}
 \usage{
-export_mmass(pks_Matrix, matrix_annotation = FALSE, metadata = FALSE)
+export_mmass(pks_Matrix, matrix_annotation = rep("HI",
+  length(pks_Matrix$mass)), metadata = FALSE)
 }
 \arguments{
 \item{pks_Matrix}{Peak matrix}

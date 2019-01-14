@@ -22,8 +22,9 @@ Imports:
   RColorBrewer,
   GlobalOptions,
   XML,
-  base64enc,
-  utils
+  utils,
+  pack,
+  reticulate
 LinkingTo: Rcpp
 Suggests: 
     testthat
