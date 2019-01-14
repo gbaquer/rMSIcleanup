@@ -586,18 +586,20 @@ export_mmass <- function (pks_Matrix,matrix_annotation=rep("HI",length(pks_Matri
   #CONVERT TO BINARY WITH THE PROPER UTF ENCODING
   intArray=""
   mzArray=""
+  removed=0
   for (i in 1:(length(mean_spectra))) {
     tryCatch({
       tmp1=iconv(struct$pack("f",as.single(mean_spectra[i])))
       tmp2=iconv(struct$pack("f",as.single(masses[i])))
     },
     error=function(cond) {
-      message("Skipped one peak")
-      message(cond)
+      print("Skipped one peak")
+      print(cond)
       tmp1=0
       tmp2=0
+      removed=removed+1
     },
-    finally = function(cond){
+    finally = {
       intArray=paste(intArray,tmp1,sep = "")
       mzArray=paste(mzArray,tmp2,sep = "")
     }
@@ -628,10 +630,10 @@ export_mmass <- function (pks_Matrix,matrix_annotation=rep("HI",length(pks_Matri
   xml$closeTag()
 
   #Spectrum
-  xml$addTag("spectrum",attrs=c(points=(length(mean_spectra))), close=FALSE)
+  xml$addTag("spectrum",attrs=c(points=(length(mean_spectra)-removed)), close=FALSE)
   #xml$addTag("spectrum",attrs=c(points=1), close=FALSE)
-  xml$addTag("mzArray", mzArray, attrs=c(precision="32", endian="little"))
-  xml$addTag("intArray",intArray, attrs=c(precision="32", endian="little"))
+  xml$addNode("mzArray", mzArray, attrs=c(precision="32", endian="little"))
+  xml$addNode("intArray",intArray, attrs=c(precision="32", endian="little"))
   xml$closeTag()
 
   #Peaklist
