@@ -402,32 +402,29 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE,ali
   }
   #SECTION 3:: Calculate average spectrum
   # [ALTERNATIVE] Sample each region instead of taking the mean
-  regions$mean_Norharmane=NULL #array(0,c(regions$num,length(masses)))
-  regions$mean_Au=NULL #array(0,c(regions$num,length(masses)))
+  regions$mean_Norharmane=list() #array(0,c(regions$num,length(masses)))
+  regions$mean_Au=list() #array(0,c(regions$num,length(masses)))
 
   for (i in 1:regions$num)
   {
     if(use_average)
     {
-      regions$mean_Norharmane=rbind(regions$mean_Norharmane,apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean))
-      regions$mean_Au=rbind(regions$mean_Au,apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean))
+      regions$mean_Norharmane[["all"]]=rbind(regions$mean_Norharmane[["all"]],apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean))
+      regions$mean_Au[["all"]]=rbind(regions$mean_Au[["all"]],apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean))
     }
     else
     {
       samples=min(length(regions$pixels_Au[[i]]),length(regions$pixels_Norharmane[[i]]))
-      regions$mean_Norharmane=rbind(regions$mean_Norharmane,pks_Norharmane_new$intensity[sample(regions$pixels_Norharmane[[i]],samples),])
-      regions$mean_Au=rbind(regions$mean_Au,pks_Au_new$intensity[sample(regions$pixels_Au[[i]],samples),])
+      region_spectra_Norharmane=pks_Norharmane_new$intensity[sample(regions$pixels_Norharmane[[i]],samples),]
+      region_spectra_Au=pks_Au_new$intensity[sample(regions$pixels_Au[[i]],samples),]
 
-      # samples=min(length(regions$pixels_Au[[i]]),length(regions$pixels_Norharmane[[i]]))
-      # for(j in 1:samples) {
-      #   regions$mean_Norharmane[i+j,]=pks_Norharmane_new$intensity[sample(regions$pixels_Norharmane[[i]],3),]
-      #   regions$mean_Au[i,]=pks_Au_new$intensity[sample(regions$pixels_Au[[i]],3),]
-      #   i+j
-      # }
-      # i=i+samples
-      # #PENDING IMPLEMENTATION OF THE SAMPLING WITH THE LOWEST NUMBER OF PIXELS
-      # regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
-      # regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+      #All regions
+      regions$mean_Norharmane[["all"]]=rbind(regions$mean_Norharmane[["all"]],region_spectra_Norharmane)
+      regions$mean_Au[["all"]]=rbind(regions$mean_Au[["all"]],region_spectra_Au)
+
+      #Each region separately
+      regions$mean_Norharmane[[i]]=region_spectra_Norharmane
+      regions$mean_Au[[i]]=region_spectra_Au
     }
 
   }
@@ -436,7 +433,7 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE,ali
   correlation_vector=array(0,c(1,length(masses)))
   for(i in 1:length(masses))
   {
-    correlation_vector[i]=cor(regions$mean_Norharmane[,i],regions$mean_Au[,i])
+    correlation_vector[i]=cor(regions$mean_Norharmane[["all"]][,i],regions$mean_Au[["all"]][,i])
   }
 
   correlation_threshold=max(correlation_vector[!is.na(correlation_vector)])*0.5
