@@ -266,12 +266,13 @@ removeMatrix_padded <- function (pks_Norharmane) {
 #'
 #' @param pks_Au Peak Matrix with gold coating
 #' @param use_average Use average of each region if true. Use all the pixels in the region if false.
+#' @param align_calib Alignement and calibration algorithm to use. "old": merges the peaks that are within a fixed threshold m/z distance. "rMSIproc": uses the function MergePeakMatrices in rMSIproc
 #' @inherit removeMatrix_padded
 #'
 #'
 #'
 #' @export
-removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE) {
+removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE,align_calib="rMSIproc") {
   #SECTION 1:: Get regions of similarity
   regions <- list(
     num = 0,
@@ -300,77 +301,105 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE) {
     regions$pixels_Au[[paste("r",i,sep="_")]]=which(distance_Au<regions$radius_Au[i])
   }
 
+
   # SECTION 2: Make the two images have the same masses vector, calibration & alignment
-  #2.1 : Find new masses vector
-  pks_Au_new=pks_Au
-  pks_Norharmane_new=pks_Norharmane
-
-  masses= sort(union(pks_Norharmane$mass,pks_Au$mass))
-
-  #2.2 : Create vectors to determine from where does each mass come from
-  indices_Au=rep(1,length(pks_Au$mass))
-  for(i in 1:length(pks_Au$mass))
+  if(align_calib=="rMSIproc")
   {
-    indices_Au[i]=which(masses==pks_Au$mass[i])
+    #[IMPROVEMENT] At this point this option uses the old scheme of creating two separate new peakmatrices for the merged data. The whole code in the function should be adapted to use the single merged matrix returned by the rMSIproc function.
+    pks_Merged=rMSIproc::MergePeakMatrices(list(pks_Norharmane,pks_Au),binningTolerance=200)
+    masses=pks_Merged$mass
+
+
+    #Decouple the merged peak matrix
+    pks_Au_new=pks_Au
+    pks_Norharmane_new=pks_Norharmane
+
+    Au_pixels=(pks_Merged$numPixels[1]+1):sum(pks_Merged$numPixels)
+    Norharmane_pixels=1:pks_Merged$numPixels[1]
+
+    pks_Au_new$mass=masses
+    pks_Au_new$intensity=pks_Merged$intensity[Au_pixels,]
+    pks_Au_new$area=pks_Merged$area[Au_pixels,]
+    pks_Au_new$SNR=pks_Merged$SNR[Au_pixels,]
+
+    pks_Norharmane_new$mass=masses
+    pks_Norharmane_new$intensity=pks_Merged$intensity[Norharmane_pixels,]
+    pks_Norharmane_new$area=pks_Merged$area[Norharmane_pixels,]
+    pks_Norharmane_new$SNR=pks_Merged$SNR[Norharmane_pixels,]
+     print("done")
   }
-
-  indices_Norharmane=rep(1,length(pks_Norharmane$mass))
-  for(i in 1:length(pks_Norharmane$mass))
+  else # align_calib="old"
   {
-    indices_Norharmane[i]=which(masses==pks_Norharmane$mass[i])
-  }
+    #2.1 : Find new masses vector
+    pks_Au_new=pks_Au
+    pks_Norharmane_new=pks_Norharmane
 
-  indices_Norharmane_backwards=rep(1,length(masses))
-  for(i in 1:length(masses))
-  {
-    index=which(pks_Norharmane$mass==masses[i])
-    if(length(index)>0)
+    masses= sort(union(pks_Norharmane$mass,pks_Au$mass))
+
+    #2.2 : Create vectors to determine from where does each mass come from
+    indices_Au=rep(1,length(pks_Au$mass))
+    for(i in 1:length(pks_Au$mass))
     {
-      indices_Norharmane_backwards[i]=index
+      indices_Au[i]=which(masses==pks_Au$mass[i])
     }
-    else
+
+    indices_Norharmane=rep(1,length(pks_Norharmane$mass))
+    for(i in 1:length(pks_Norharmane$mass))
     {
-      indices_Norharmane_backwards[i]=NA
+      indices_Norharmane[i]=which(masses==pks_Norharmane$mass[i])
     }
+
+    indices_Norharmane_backwards=rep(1,length(masses))
+    for(i in 1:length(masses))
+    {
+      index=which(pks_Norharmane$mass==masses[i])
+      if(length(index)>0)
+      {
+        indices_Norharmane_backwards[i]=index
+      }
+      else
+      {
+        indices_Norharmane_backwards[i]=NA
+      }
+    }
+
+    #2.3 : Create new images with the updated masses vector
+    pks_Au_new$mass=masses
+    pks_Au_new$intensity=matrix(0,pks_Au_new$numPixels,length(masses))
+    pks_Au_new$area=matrix(0,pks_Au_new$numPixels,length(masses))
+    pks_Au_new$SNR=matrix(0,pks_Au_new$numPixels,length(masses))
+    pks_Au_new$intensity[,indices_Au]=pks_Au$intensity
+    pks_Au_new$area[,indices_Au]=pks_Au$area
+    pks_Au_new$SNR[,indices_Au]=pks_Au$SNR
+
+    pks_Norharmane_new$mass=masses
+    pks_Norharmane_new$intensity=matrix(0,pks_Norharmane_new$numPixels,length(masses))
+    pks_Norharmane_new$area=matrix(0,pks_Norharmane_new$numPixels,length(masses))
+    pks_Norharmane_new$SNR=matrix(0,pks_Norharmane_new$numPixels,length(masses))
+    pks_Norharmane_new$intensity[,indices_Norharmane]=pks_Norharmane$intensity
+    pks_Norharmane_new$area[,indices_Norharmane]=pks_Norharmane$area
+    pks_Norharmane_new$SNR[,indices_Norharmane]=pks_Norharmane$SNR
+
+    #2.4:[MISSING] Label free calibration and alignment
+
+    #2.5: Merge masses under the tolerance
+    mass_threshold=2
+    masses_to_merge=which(diff(masses)<mass_threshold)
+
+    pks_Au_new$intensity[,masses_to_merge]=pks_Au_new$intensity[,masses_to_merge]+pks_Au_new$intensity[,masses_to_merge+1]
+    pks_Au_new$area[,masses_to_merge]=pks_Au_new$area[,masses_to_merge]+pks_Au_new$area[,masses_to_merge+1]
+    pks_Au_new$SNR[,masses_to_merge]=pks_Au_new$SNR[,masses_to_merge]+pks_Au_new$SNR[,masses_to_merge+1]
+    pks_Au_new$intensity[,masses_to_merge+1]=pks_Au_new$intensity[,masses_to_merge]
+    pks_Au_new$area[,masses_to_merge+1]=pks_Au_new$area[,masses_to_merge]
+    pks_Au_new$SNR[,masses_to_merge+1]=pks_Au_new$SNR[,masses_to_merge]
+
+    pks_Norharmane_new$intensity[,masses_to_merge]=pks_Norharmane_new$intensity[,masses_to_merge]+pks_Norharmane_new$intensity[,masses_to_merge+1]
+    pks_Norharmane_new$area[,masses_to_merge]=pks_Norharmane_new$area[,masses_to_merge]+pks_Norharmane_new$area[,masses_to_merge+1]
+    pks_Norharmane_new$SNR[,masses_to_merge]=pks_Norharmane_new$SNR[,masses_to_merge]+pks_Norharmane_new$SNR[,masses_to_merge+1]
+    pks_Norharmane_new$intensity[,masses_to_merge+1]=pks_Norharmane_new$intensity[,masses_to_merge]
+    pks_Norharmane_new$area[,masses_to_merge+1]=pks_Norharmane_new$area[,masses_to_merge]
+    pks_Norharmane_new$SNR[,masses_to_merge+1]=pks_Norharmane_new$SNR[,masses_to_merge]
   }
-
-  #2.3 : Create new images with the updated masses vector
-  pks_Au_new$mass=masses
-  pks_Au_new$intensity=matrix(0,pks_Au_new$numPixels,length(masses))
-  pks_Au_new$area=matrix(0,pks_Au_new$numPixels,length(masses))
-  pks_Au_new$SNR=matrix(0,pks_Au_new$numPixels,length(masses))
-  pks_Au_new$intensity[,indices_Au]=pks_Au$intensity
-  pks_Au_new$area[,indices_Au]=pks_Au$area
-  pks_Au_new$SNR[,indices_Au]=pks_Au$SNR
-
-  pks_Norharmane_new$mass=masses
-  pks_Norharmane_new$intensity=matrix(0,pks_Norharmane_new$numPixels,length(masses))
-  pks_Norharmane_new$area=matrix(0,pks_Norharmane_new$numPixels,length(masses))
-  pks_Norharmane_new$SNR=matrix(0,pks_Norharmane_new$numPixels,length(masses))
-  pks_Norharmane_new$intensity[,indices_Norharmane]=pks_Norharmane$intensity
-  pks_Norharmane_new$area[,indices_Norharmane]=pks_Norharmane$area
-  pks_Norharmane_new$SNR[,indices_Norharmane]=pks_Norharmane$SNR
-
-  #2.4:[MISSING] Label free calibration and alignment
-
-  #2.5: Merge masses under the tolerance
-  mass_threshold=2
-  masses_to_merge=which(diff(masses)<mass_threshold)
-
-  pks_Au_new$intensity[,masses_to_merge]=pks_Au_new$intensity[,masses_to_merge]+pks_Au_new$intensity[,masses_to_merge+1]
-  pks_Au_new$area[,masses_to_merge]=pks_Au_new$area[,masses_to_merge]+pks_Au_new$area[,masses_to_merge+1]
-  pks_Au_new$SNR[,masses_to_merge]=pks_Au_new$SNR[,masses_to_merge]+pks_Au_new$SNR[,masses_to_merge+1]
-  pks_Au_new$intensity[,masses_to_merge+1]=pks_Au_new$intensity[,masses_to_merge]
-  pks_Au_new$area[,masses_to_merge+1]=pks_Au_new$area[,masses_to_merge]
-  pks_Au_new$SNR[,masses_to_merge+1]=pks_Au_new$SNR[,masses_to_merge]
-
-  pks_Norharmane_new$intensity[,masses_to_merge]=pks_Norharmane_new$intensity[,masses_to_merge]+pks_Norharmane_new$intensity[,masses_to_merge+1]
-  pks_Norharmane_new$area[,masses_to_merge]=pks_Norharmane_new$area[,masses_to_merge]+pks_Norharmane_new$area[,masses_to_merge+1]
-  pks_Norharmane_new$SNR[,masses_to_merge]=pks_Norharmane_new$SNR[,masses_to_merge]+pks_Norharmane_new$SNR[,masses_to_merge+1]
-  pks_Norharmane_new$intensity[,masses_to_merge+1]=pks_Norharmane_new$intensity[,masses_to_merge]
-  pks_Norharmane_new$area[,masses_to_merge+1]=pks_Norharmane_new$area[,masses_to_merge]
-  pks_Norharmane_new$SNR[,masses_to_merge+1]=pks_Norharmane_new$SNR[,masses_to_merge]
-
   #SECTION 3:: Calculate average spectrum
   # [ALTERNATIVE] Sample each region instead of taking the mean
   regions$mean_Norharmane=NULL #array(0,c(regions$num,length(masses)))
@@ -413,11 +442,11 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE) {
   correlation_threshold=max(correlation_vector[!is.na(correlation_vector)])*0.5
 
   #Return the Norharmane indices that have a higher correlation than the defined correlation_threshold
-  indices_result=indices_Norharmane_backwards[which(correlation_vector>correlation_threshold)]
+  #indices_result=indices_Norharmane_backwards[which(correlation_vector>correlation_threshold)]
+  indices_result=which(correlation_vector>correlation_threshold)
 
   indices_result=indices_result[!is.na(indices_result)] #Remove NA values
   correlation_vector=correlation_vector[!is.na(correlation_vector)] #Remove NA values
-
 
   #SECTION 5:: Plotting results
   if(pkg_opt()$verbose_level<=-1)
