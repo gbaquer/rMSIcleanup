@@ -373,21 +373,32 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE) {
 
   #SECTION 3:: Calculate average spectrum
   # [ALTERNATIVE] Sample each region instead of taking the mean
-  regions$mean_Norharmane=array(0,c(regions$num,length(masses)))
-  regions$mean_Au=array(0,c(regions$num,length(masses)))
+  regions$mean_Norharmane=NULL #array(0,c(regions$num,length(masses)))
+  regions$mean_Au=NULL #array(0,c(regions$num,length(masses)))
 
   for (i in 1:regions$num)
   {
     if(use_average)
     {
-      regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
-      regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+      regions$mean_Norharmane=rbind(regions$mean_Norharmane,apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean))
+      regions$mean_Au=rbind(regions$mean_Au,apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean))
     }
     else
     {
-      #PENDING IMPLEMENTATION OF THE SAMPLING WITH THE LOWEST NUMBER OF PIXELS
-      regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
-      regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
+      samples=min(length(regions$pixels_Au[[i]]),length(regions$pixels_Norharmane[[i]]))
+      regions$mean_Norharmane=rbind(regions$mean_Norharmane,pks_Norharmane_new$intensity[sample(regions$pixels_Norharmane[[i]],samples),])
+      regions$mean_Au=rbind(regions$mean_Au,pks_Au_new$intensity[sample(regions$pixels_Au[[i]],samples),])
+
+      # samples=min(length(regions$pixels_Au[[i]]),length(regions$pixels_Norharmane[[i]]))
+      # for(j in 1:samples) {
+      #   regions$mean_Norharmane[i+j,]=pks_Norharmane_new$intensity[sample(regions$pixels_Norharmane[[i]],3),]
+      #   regions$mean_Au[i,]=pks_Au_new$intensity[sample(regions$pixels_Au[[i]],3),]
+      #   i+j
+      # }
+      # i=i+samples
+      # #PENDING IMPLEMENTATION OF THE SAMPLING WITH THE LOWEST NUMBER OF PIXELS
+      # regions$mean_Norharmane[i,]=apply(pks_Norharmane_new$intensity[regions$pixels_Norharmane[[i]],],2,mean)
+      # regions$mean_Au[i,]=apply(pks_Au_new$intensity[regions$pixels_Au[[i]],],2,mean)
     }
 
   }
@@ -399,7 +410,7 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE) {
     correlation_vector[i]=cor(regions$mean_Norharmane[,i],regions$mean_Au[,i])
   }
 
-  correlation_threshold=0.7
+  correlation_threshold=max(correlation_vector[!is.na(correlation_vector)])*0.5
 
   #Return the Norharmane indices that have a higher correlation than the defined correlation_threshold
   indices_result=indices_Norharmane_backwards[which(correlation_vector>correlation_threshold)]
@@ -569,14 +580,14 @@ cross_validation <- function () {
 #'
 #'
 #' @export
-export_mmass <- function (pks_Matrix,matrix_annotation=rep("HI",length(pks_Matrix$mass)),metadata=FALSE) {
+export_mmass <- function (pks_Matrix,matrix_annotation=rep(1,length(pks_Matrix$mass)),metadata=FALSE) {
   #Calculate mean spectra
   mean_spectra=apply(pks_Matrix$intensity,2,mean)
   masses=lapply(pks_Matrix$mass,function(x) x)
   #Create table
   export_table=data.frame(mass=pks_Matrix$mass,intensity=mean_spectra)
   #Write txt file
-  write.table(export_table, file = "output/output.txt", sep = "\t", row.names=FALSE, col.names=FALSE)
+  write.table(export_table, file = "output/complete_spectrum.txt", sep = "\t", row.names=FALSE, col.names=FALSE)
 
   #IMPORT PYTHON MODULES
   struct=reticulate::import("struct")
@@ -587,7 +598,8 @@ export_mmass <- function (pks_Matrix,matrix_annotation=rep("HI",length(pks_Matri
   intArray=""
   mzArray=""
   removed=0
-  for (i in 1:(length(mean_spectra))) {
+  matrix_peaks=which(matrix_annotation>0)
+  for (i in matrix_peaks) {
     tryCatch({
       tmp1=iconv(struct$pack("f",as.single(mean_spectra[i])))
       tmp2=iconv(struct$pack("f",as.single(masses[i])))
@@ -615,23 +627,23 @@ export_mmass <- function (pks_Matrix,matrix_annotation=rep("HI",length(pks_Matri
   intArray = base64$b64encode(intArray)
 
   #WRITE mSD FILE
-  xml <- XML::xmlTree()
+  xml <- XML::xmlTree("mSD_file")
   # names(xml)
-  xml$addTag("mSD", close=FALSE, attrs=c(version="2.2"))
+  xml$addNode("mSD", close=FALSE, attrs=c(version="2.2"))
   #Description
-  xml$addTag("description", close=FALSE)
-  xml$addTag("title","MATRIX_ANNOTATION_REPORT")
-  xml$addTag("date", attrs=c(value=Sys.time()))
-  xml$addTag("operator", attrs=c(value=""))
-  xml$addTag("contact", attrs=c(value="Gerard Baquer Gomez (gerard.baquer@urv.cat)"))
-  xml$addTag("institution", attrs=c(value="MIL@B (URV)"))
-  xml$addTag("instrument", attrs=c(value=""))
-  xml$addTag("notes","THIS SPACE IS RESERVED FOR NOTES")
+  xml$addNode("description", close=FALSE)
+  xml$addNode("title","MATRIX_ANNOTATION_REPORT")
+  xml$addNode("date", attrs=c(value=Sys.time()))
+  xml$addNode("operator", attrs=c(value=""))
+  xml$addNode("contact", attrs=c(value="Gerard Baquer Gomez (gerard.baquer@urv.cat)"))
+  xml$addNode("institution", attrs=c(value="MIL@B (URV)"))
+  xml$addNode("instrument", attrs=c(value=""))
+  xml$addNode("notes","THIS SPACE IS RESERVED FOR NOTES")
   xml$closeTag()
 
   #Spectrum
-  xml$addTag("spectrum",attrs=c(points=(length(mean_spectra)-removed)), close=FALSE)
-  #xml$addTag("spectrum",attrs=c(points=1), close=FALSE)
+  xml$addNode("spectrum",attrs=c(points=(length(mean_spectra)-removed)), close=FALSE)
+  #xml$addNode("spectrum",attrs=c(points=1), close=FALSE)
   xml$addNode("mzArray", mzArray, attrs=c(precision="32", endian="little"))
   xml$addNode("intArray",intArray, attrs=c(precision="32", endian="little"))
   xml$closeTag()
@@ -640,15 +652,15 @@ export_mmass <- function (pks_Matrix,matrix_annotation=rep("HI",length(pks_Matri
   #[THE PEAK LIST WILL PROBABLY INCLUDE THE PEAK MATRIX WHEN THE FUNCTION IS UPGRADED TO INCLUDE THE FULL SPECTRUM]
 
   #Annotations
-  xml$addTag("annotations", close=FALSE)
-  for (i in 1:(length(mean_spectra))) {
-      xml$addTag("annotation", matrix_annotation[i], attrs=c(peakMZ=masses[i], peakIntensity=mean_spectra[i]))
+  xml$addNode("annotations", close=FALSE)
+  for (i in matrix_peaks) {
+      xml$addNode("annotation", matrix_annotation[i], attrs=c(peakMZ=masses[i], peakIntensity=mean_spectra[i]))
   }
   xml$closeTag()
 
   #Save document
   xml$closeTag()
-  saveXML(xml,"output/output.msd",prefix='<?xml version="1.0" encoding="utf-8" ?>\n')
+  saveXML(xml,"output/matrix_peaks.msd",prefix='<?xml version="1.0" encoding="utf-8" ?>\n')
 }
 
 # __ HELPER FUNCTIONS __
