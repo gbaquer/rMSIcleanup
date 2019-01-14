@@ -13,7 +13,6 @@ LazyData: true
 Imports: 
   Rcpp (>= 1.0.0),
   R.utils,
-  rMSI,
   rMSIproc,
   gridExtra,
   lattice,
@@ -23,7 +22,8 @@ Imports:
   RColorBrewer,
   GlobalOptions,
   XML,
-  base64enc
+  base64enc,
+  utils
 LinkingTo: Rcpp
 Suggests: 
     testthat

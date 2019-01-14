@@ -570,7 +570,6 @@ cross_validation <- function () {
 #'
 #' @export
 export_mmass <- function (pks_Matrix,matrix_annotation=FALSE,metadata=FALSE) {
-  library(XML)
   #Calculate mean spectra
   mean_spectra=apply(pks_Matrix$intensity,2,mean)
   #Create table
@@ -584,7 +583,7 @@ export_mmass <- function (pks_Matrix,matrix_annotation=FALSE,metadata=FALSE) {
   mzArray=base64encode(paste(pks_Matrix$mass,collapse = " "))
 
   #Write msd file
-  xml <- xmlTree()
+  xml <- XML::xmlTree()
   # names(xml)
   xml$addTag("mSD", close=FALSE, attrs=c(version="2.2"))
   #Description
