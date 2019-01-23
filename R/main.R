@@ -137,7 +137,7 @@ plot_image_summary <- function () {
 #'
 #'
 #' @export
-removeMatrix_padded_new <- function (pks,normalize=TRUE) {
+removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,max_exo=10) {
 
   #SECTION 0 :: Preprocessing
   # Select first image if there are multiple
@@ -179,12 +179,16 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE) {
   # Smooth the cluster
   #[PENDING]
 
-  dev.new()
-  rMSIproc::plotClusterImage(pks,clus$cluster)
+  #Plotting results
+  if(pkg_opt()$verbose_level<=-1)
+  {
+    dev.new()
+    rMSIproc::plotClusterImage(pks,clus$cluster)
 
-  # dev.new()
-  # plot(pks$mass,mean_1,type="h",col=1)
-  # lines(pks$mass,mean_2,type="h",col=2)
+    # dev.new()
+    # plot(pks$mass,mean_1,type="h",col=1)
+    # lines(pks$mass,mean_2,type="h",col=2)
+  }
 
   # Automatically find the exogenous peaks with no supervision
   #A.1. Load manually identified peaks outside of tissue
@@ -197,17 +201,16 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE) {
   corMAT=cor(pks$intensity)
 
   #Rank correlation of exo indices [IMPROVE: get the "max_exo" elements that correlate the best to the three of them]
-  max_exo=10
-  top_exo_mat=integer()
-  for (i in exo_is)
-    top_exo_mat=cbind(top_exo_mat,sort(corMAT[i,],decreasing=TRUE,index.return=TRUE)$ix)
-  top_exo=unique(as.vector(t(top_exo_mat)))[1:max_exo]
+  # top_exo_mat=integer()
+  # for (i in exo_is)
+  #   top_exo_mat=cbind(top_exo_mat,sort(corMAT[i,],decreasing=TRUE,index.return=TRUE)$ix)
+  # top_exo=unique(as.vector(t(top_exo_mat)))[1:max_exo]
 
-  #top_exo=sort((mean_1-mean_2)/mean_2,decreasing = TRUE,index.return=TRUE)$ix[1:10]
+  top_exo=sort(abs((mean_1-mean_2)/pmax(mean_1,mean_2)),decreasing = TRUE,index.return=TRUE)$ix[1:10]
 
   mean_exo_cor=apply(corMAT[top_exo,],2,mean)
   bio_peaks=which(mean_exo_cor<0)
-  nonbio_peaks=which(mean_exo_cor>=0.7)#0.65
+  nonbio_peaks=which(mean_exo_cor>=cor_threshold)#0.65
 
   return(nonbio_peaks)
 }
@@ -702,42 +705,111 @@ Ag_validation <- function () {
   annotations_Ag=read.table("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/Ag.ref")
 
   #METHOD 1
-  m1_indices=removeMatrix_padded_new(pks_Ag)
-  m1_masses=pks_Ag$mass[m1_indices]
+  cor_thresholds=seq(0,1,length=10)
+  scores_list=list()
+  for(ct in cor_thresholds)
+  {
+    m1_indices=removeMatrix_padded_new(pks_Ag,cor_threshold = ct)
+    m1_masses=pks_Ag$mass[m1_indices]
 
-  #False positive
-  #False negative
-  #1 metric
-  #PRINT REPORT
-  print("GROUND TRUTH: ANNOTATED Ag")
-  print(annotations_Ag[[2]])
-  print("METHOD 1: PADDED")
-  print(paste("NUM PEAKS:",length(m1_indices),"PERCENTAGE:",100*length(m1_indices)/length(pks_Ag$mass)))
-  print("IDX'S:")
-  print(m1_indices)
-  print("MASSES:")
-  print(m1_masses)
-  print("SIMILARITIES")
-  #figures of merit
-  digits=1
-  pos=round(m1_masses,digits=digits)
-  neg=round(setdiff(pks_Ag$mass,m1_masses),digits=digits)
-  gt=round(annotations_Ag[[2]],digits=digits)
+    #False positive
+    #False negative
+    #1 metric
+    #PRINT REPORT
+    if(pkg_opt()$verbose_level<=-1)
+    {
+      print("GROUND TRUTH: ANNOTATED Ag")
+      print(annotations_Ag[[2]])
+      print("METHOD 1: PADDED")
+      print(paste("NUM PEAKS:",length(m1_indices),"PERCENTAGE:",100*length(m1_indices)/length(pks_Ag$mass)))
+      print("IDX'S:")
+      print(m1_indices)
+      print("MASSES:")
+      print(m1_masses)
+      print("SIMILARITIES")
+      distance_matrix=abs(outer(m1_masses,annotations_Ag[[2]],'-'))
+      print(sort(distance_matrix)[1:100])
+    }
+    #figures of merit
+    digits=1
+    pos=round(m1_masses,digits=digits)
+    neg=round(setdiff(pks_Ag$mass,m1_masses),digits=digits)
+    gt=round(annotations_Ag[[2]],digits=digits)
 
-  tp=intersect(pos,gt) #true positive
-  fp=which(!is.element(pos,tp)) #setdiff(pos,tp) #false positive
-  fn=intersect(neg,gt) #false negative
-  tn=which(!is.element(neg,fn))#setdiff(neg,fn) #true negative
+    scores=compute_scores(gt,pos,neg)
+    for(a in attributes(scores)$names)
+    {
+      scores_list[[a]]=append(scores_list[[a]],scores[[a]])
+    }
+  }
+  dev.new()
+  plot(cor_thresholds,scores_list$f1_score,type="l")
+  lines(cor_thresholds,scores_list$b_score,type="l")
+  dev.new()
+  plot(cor_thresholds,scores_list$p,type="l")
+  lines(cor_thresholds,scores_list$r,type="l")
+  dev.new()
+  plot(cor_thresholds,scores_list$tp,type="l")
+  lines(cor_thresholds,scores_list$tn,type="l")
+  lines(cor_thresholds,scores_list$fp,type="l")
+  lines(cor_thresholds,scores_list$fn,type="l")
 
-  p=length(tp)/(length(tp)+length(fp)) #precision
-  r=length(tp)/(length(tp)+length(fn)) #recall
 
-  f1_score= 2*(r*p)/(r+p) #F1 score
+}
 
-  print(paste("tp:",length(tp),"tn:",length(tn),"fp:",length(fp),"fn:",length(fn)))
-  print(paste("F1 score:",f1_score,"p:",p,"r:",r))
-  distance_matrix=abs(outer(m1_masses,annotations_Ag[[2]],'-'))
-  print(sort(distance_matrix)[1:100])
+#' Compute scores
+#'
+#' Returns several scores for performance assessment of a given binary classification result.
+#'
+#' @param gt Ground truth: Positive values
+#' @param pos Classified positives
+#' @param neg Classified negatives
+#' @value List with all the computed scores. It includes F1 score and Brier score. As well as the number of
+#'
+#'
+#' @export
+compute_scores <- function (gt,pos,neg) {
+  tp_list=intersect(pos,gt) #true positive
+  fp_list=which(!is.element(pos,tp)) #setdiff(pos,tp) #false positive
+  fn_list=intersect(neg,gt) #false negative
+  tn_list=which(!is.element(neg,fn))#setdiff(neg,fn) #true negative
+
+  tp=length(tp_list)
+  fp=length(fp_list)
+  fn=length(fn_list)
+  tn=length(tn_list)
+
+  p=tp/(tp+fp) #precision
+  r=tp/(tp+fn) #recall
+
+  scores=list()
+  scores$f1_score= 2*(r*p)/(r+p) #F1 score
+  scores$b_score= (fp+fn)/(length(pos)+length(neg)) #Brier score
+  scores$tp=tp
+  scores$fp=fp
+  scores$fn=fn
+  scores$tn=tn
+  scores$p=p
+  scores$r=r
+
+  if(pkg_opt()$verbose_level<=-1)
+  {
+    print(paste("tp:",length(tp),"tn:",length(tn),"fp:",length(fp),"fn:",length(fn)))
+    print(paste("p:",p,"r:",r))
+    print(paste("F1 score:",scores$f1_score,"BS:",scores$b_score))
+  }
+  return(scores)
+}
+#' Compute scores
+#'
+#' Returns several scores for performance assessment of a given binary classification result.
+#'
+#' @param x X variable
+#' @param scores_list List of scores for each x
+#'
+#' @export
+plot_scores <- function (x,scores_list) {
+
 }
 
 #' Export to mmass
