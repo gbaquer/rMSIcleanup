@@ -124,6 +124,91 @@ plot_image_summary <- function () {
   title("Au")
 }
 
+#' Remove Matrix Padded New
+#'
+#' Remove the matrix following the method presented by Fonville et al. 2012.
+#' It takes a padded image where there is a wide enough region of pixels outside of the tissue.
+#' It consists of three basic steps.
+#'
+#' @param pks Peak Matrix
+#' @param normalize Boolean value to determine if normalization is to be performed. If TRUE TIC normalization is performed
+#'
+#' @return List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
+#'
+#'
+#' @export
+removeMatrix_padded_new <- function (pks,normalize=TRUE) {
+
+  #SECTION 0 :: Preprocessing
+  # Select first image if there are multiple
+  if(length(pks$numPixels)>1)
+  {
+    rows=1:pks$numPixels[1]
+
+    for(attr in attributes(pks)$names)
+    {
+      if(is.null(dim(pks[[attr]])))
+      {
+        if(attr!="mass")
+        {
+          pks[[attr]]=pks[[attr]][1]
+        }
+      }
+      else
+      {
+        pks[[attr]]=pks[[attr]][rows,]
+      }
+    }
+  }
+
+  # Normalize to TIC
+  if(normalize)
+    pks$intensity=pks$intensity/pks$normalizations$TIC
+
+
+
+  #SECTION 1 :: Identify regions outside of the tissue area
+
+  clus=kmeans(pks$intensity,centers = 2)
+
+  # Smooth the cluster
+  #[PENDING]
+
+  rMSIproc::plotClusterImage(pks,clus$cluster)
+
+  dev.new()
+  mean_1=apply(pks$intensity[which(clus$cluster==1),],2,mean,lwd = 3,lend=1)
+  mean_2=apply(pks$intensity[which(clus$cluster==2),],2,mean,lwd = 3,lend=1)
+
+  plot(pks$mass,mean_1,type="h",col=1)
+  lines(pks$mass,mean_2,type="h",col=2)
+
+  # Automatically find the exogenous peaks with no supervision
+  #A.1. Load manually identified peaks outside of tissue
+  exo_peaks <- c(431.6194,970.1442)
+  exo_is=double()
+  for (p in exo_peaks)
+    exo_is=append(exo_is,match(TRUE,pks$mass>=p))
+
+  #A.2. Get peaks with highest correlation to the manually identified peaks (to find other likely exogenous peaks)
+  corMAT=cor(pks$intensity)
+
+  #Rank correlation of exo indices [IMPROVE: get the "max_exo" elements that correlate the best to the three of them]
+  # max_exo=5
+  # top_exo_mat=integer()
+  # for (i in exo_is)
+  #   top_exo_mat=cbind(top_exo_mat,sort(corMAT[i,],decreasing=TRUE,index.return=TRUE)$ix)
+  # top_exo=unique(as.vector(t(top_exo_mat)))[1:max_exo]
+
+  top_exo=sort((mean_1-mean_2)/mean_2,decreasing = TRUE,index.return=TRUE)$ix[1:10]
+
+  mean_exo_cor=apply(corMAT[top_exo,],2,mean)
+  bio_peaks=which(mean_exo_cor<0)
+  nonbio_peaks=which(mean_exo_cor>=0)
+
+  return(nonbio_peaks)
+}
+
 #' Remove Matrix Padded
 #'
 #' Remove the matrix following the method presented by Fonville et al. 2012.
@@ -467,17 +552,17 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE,ali
 #' The algorithm identifies similar spectral peaks.
 #'
 #' @param correlation Binary valiable determining whether to use the correlation of the raw data or the raw data
-#' @param normalization Binary variable determining whether to normalize the data or not. TIC normalization is used.
+#' @param normalize Binary variable determining whether to normalize the data or not. TIC normalization is used.
 #' @inherit removeMatrix_padded
 #'
 #'
 #'
 #' @export
-removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,normalization=TRUE) {
+removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,normalize=TRUE) {
 
   # SECTION 1 :: Preprocessing
   data=pks_Norharmane$intensity
-  if(normalization)
+  if(normalize)
     data=data/pks_Norharmane$normalizations$TIC #normalization
   if(correlation)
     data=cor(data) #correlation
@@ -565,8 +650,12 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,norma
 #' @export
 cross_validation <- function () {
   #LOAD DATA
+  pks_Ag <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-mergeddata-peaks.zip")
   pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
   pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
+
+  #LOAD Ag ANNOTATIONS
+  annotations_Ag=read.table("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/Ag.ref")
 
   #METHOD 1
   m1_indices=removeMatrix_padded(pks_Norharmane)
@@ -590,6 +679,36 @@ cross_validation <- function () {
   print("SIMILARITIES M1-M2")
   print(length(intersect(m1_indices,m2_indices)))
   distance_matrix=abs(outer(m1_masses,m2_masses,'-'))
+  print(sort(distance_matrix))
+  print(distance_matrix)
+}
+
+#' Ag validation.
+#'
+#' Compare the results of all methods to assess consistency.
+#'
+#' @return None
+#'
+#'
+#' @export
+Ag_validation <- function () {
+  #LOAD DATA
+  pks_Ag <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-mergeddata-peaks.zip")
+
+  #LOAD Ag ANNOTATIONS
+  annotations_Ag=read.table("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/Ag.ref")
+
+  #METHOD 1
+  m1_indices=removeMatrix_padded_new(pks_Ag)
+  m1_masses=pks_Ag$mass[m1_indices]
+
+  #PRINT REPORT
+  print("METHOD 1: PADDED")
+  print(m1_indices)
+  print(m1_masses)
+  print("SIMILARITIES")
+  print(length(intersect(round(m1_masses,digits=2),round(annotations_Ag[[2]],digits=2))))
+  distance_matrix=abs(outer(m1_masses,annotations_Ag[[2]],'-'))
   print(sort(distance_matrix))
   print(distance_matrix)
 }
