@@ -171,17 +171,20 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE) {
 
   clus=kmeans(pks$intensity,centers = 2)
 
+  sorted_clusters=sort(clus$size,index.return=TRUE,decreasing = TRUE)$ix
+
+  mean_1=apply(pks$intensity[which(clus$cluster==sorted_clusters[1]),],2,mean,lwd = 3,lend=1)
+  mean_2=apply(pks$intensity[which(clus$cluster==sorted_clusters[1]),],2,mean,lwd = 3,lend=1)
+
   # Smooth the cluster
   #[PENDING]
 
+  dev.new()
   rMSIproc::plotClusterImage(pks,clus$cluster)
 
-  dev.new()
-  mean_1=apply(pks$intensity[which(clus$cluster==1),],2,mean,lwd = 3,lend=1)
-  mean_2=apply(pks$intensity[which(clus$cluster==2),],2,mean,lwd = 3,lend=1)
-
-  plot(pks$mass,mean_1,type="h",col=1)
-  lines(pks$mass,mean_2,type="h",col=2)
+  # dev.new()
+  # plot(pks$mass,mean_1,type="h",col=1)
+  # lines(pks$mass,mean_2,type="h",col=2)
 
   # Automatically find the exogenous peaks with no supervision
   #A.1. Load manually identified peaks outside of tissue
@@ -194,17 +197,17 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE) {
   corMAT=cor(pks$intensity)
 
   #Rank correlation of exo indices [IMPROVE: get the "max_exo" elements that correlate the best to the three of them]
-  # max_exo=5
-  # top_exo_mat=integer()
-  # for (i in exo_is)
-  #   top_exo_mat=cbind(top_exo_mat,sort(corMAT[i,],decreasing=TRUE,index.return=TRUE)$ix)
-  # top_exo=unique(as.vector(t(top_exo_mat)))[1:max_exo]
+  max_exo=10
+  top_exo_mat=integer()
+  for (i in exo_is)
+    top_exo_mat=cbind(top_exo_mat,sort(corMAT[i,],decreasing=TRUE,index.return=TRUE)$ix)
+  top_exo=unique(as.vector(t(top_exo_mat)))[1:max_exo]
 
-  top_exo=sort((mean_1-mean_2)/mean_2,decreasing = TRUE,index.return=TRUE)$ix[1:10]
+  #top_exo=sort((mean_1-mean_2)/mean_2,decreasing = TRUE,index.return=TRUE)$ix[1:10]
 
   mean_exo_cor=apply(corMAT[top_exo,],2,mean)
   bio_peaks=which(mean_exo_cor<0)
-  nonbio_peaks=which(mean_exo_cor>=0)
+  nonbio_peaks=which(mean_exo_cor>=0.7)#0.65
 
   return(nonbio_peaks)
 }
@@ -702,15 +705,39 @@ Ag_validation <- function () {
   m1_indices=removeMatrix_padded_new(pks_Ag)
   m1_masses=pks_Ag$mass[m1_indices]
 
+  #False positive
+  #False negative
+  #1 metric
   #PRINT REPORT
+  print("GROUND TRUTH: ANNOTATED Ag")
+  print(annotations_Ag[[2]])
   print("METHOD 1: PADDED")
+  print(paste("NUM PEAKS:",length(m1_indices),"PERCENTAGE:",100*length(m1_indices)/length(pks_Ag$mass)))
+  print("IDX'S:")
   print(m1_indices)
+  print("MASSES:")
   print(m1_masses)
   print("SIMILARITIES")
-  print(length(intersect(round(m1_masses,digits=2),round(annotations_Ag[[2]],digits=2))))
+  #figures of merit
+  digits=1
+  pos=round(m1_masses,digits=digits)
+  neg=round(setdiff(pks_Ag$mass,m1_masses),digits=digits)
+  gt=round(annotations_Ag[[2]],digits=digits)
+
+  tp=intersect(pos,gt) #true positive
+  fp=which(!is.element(pos,tp)) #setdiff(pos,tp) #false positive
+  fn=intersect(neg,gt) #false negative
+  tn=which(!is.element(neg,fn))#setdiff(neg,fn) #true negative
+
+  p=length(tp)/(length(tp)+length(fp)) #precision
+  r=length(tp)/(length(tp)+length(fn)) #recall
+
+  f1_score= 2*(r*p)/(r+p) #F1 score
+
+  print(paste("tp:",length(tp),"tn:",length(tn),"fp:",length(fp),"fn:",length(fn)))
+  print(paste("F1 score:",f1_score,"p:",p,"r:",r))
   distance_matrix=abs(outer(m1_masses,annotations_Ag[[2]],'-'))
-  print(sort(distance_matrix))
-  print(distance_matrix)
+  print(sort(distance_matrix)[1:100])
 }
 
 #' Export to mmass
