@@ -4,7 +4,7 @@
 \alias{export_mmass}
 \title{Export to mmass}
 \usage{
-export_mmass(pks_Matrix, matrix_annotation = rep("HI",
+export_mmass(pks_Matrix, matrix_annotation = rep(1,
   length(pks_Matrix$mass)), metadata = FALSE)
 }
 \arguments{

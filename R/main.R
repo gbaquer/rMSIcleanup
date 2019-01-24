@@ -132,6 +132,8 @@ plot_image_summary <- function () {
 #'
 #' @param pks Peak Matrix
 #' @param normalize Boolean value to determine if normalization is to be performed. If TRUE TIC normalization is performed
+#' @param cor_threshold Correlation threshold over which a given peak is considered to be a matrix peak
+#' @param max_exo Number of peaks used as base for the correlation
 #'
 #' @return List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
 #'
@@ -731,29 +733,47 @@ Ag_validation <- function () {
       print(sort(distance_matrix)[1:100])
     }
     #figures of merit
-    digits=1
-    pos=round(m1_masses,digits=digits)
-    neg=round(setdiff(pks_Ag$mass,m1_masses),digits=digits)
-    gt=round(annotations_Ag[[2]],digits=digits)
+    # digits=1
+    # pos=round(m1_masses,digits=digits)
+    # neg=round(setdiff(pks_Ag$mass,m1_masses),digits=digits)
+    # gt=round(annotations_Ag[[2]],digits=digits)
 
-    scores=compute_scores(gt,pos,neg)
+    pos=m1_masses
+    neg=setdiff(pks_Ag$mass,m1_masses)
+    gt=annotations_Ag[[2]]
+
+    scores=compute_scores(gt,pos,neg,pks_Ag$mass)
     for(a in attributes(scores)$names)
     {
       scores_list[[a]]=append(scores_list[[a]],scores[[a]])
     }
   }
-  dev.new()
-  plot(cor_thresholds,scores_list$f1_score,type="l")
-  lines(cor_thresholds,scores_list$b_score,type="l")
-  dev.new()
-  plot(cor_thresholds,scores_list$p,type="l")
-  lines(cor_thresholds,scores_list$r,type="l")
-  dev.new()
-  plot(cor_thresholds,scores_list$tp,type="l")
-  lines(cor_thresholds,scores_list$tn,type="l")
-  lines(cor_thresholds,scores_list$fp,type="l")
-  lines(cor_thresholds,scores_list$fn,type="l")
+  scores_list[["cor_thresholds"]]=cor_thresholds
+  scores_block1=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("f1_score","b_score"))
+  scores_block2=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("p","r"))
+  scores_block3=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("tp","tn","fp","fn"))
+  #[Add ggplots]
+  # dev.new()
+  # plot(cor_thresholds,scores_list$f1_score,type="l")
+  # lines(cor_thresholds,scores_list$b_score,type="l")
+  # dev.new()
+  # plot(cor_thresholds,scores_list$p,type="l")
+  # lines(cor_thresholds,scores_list$r,type="l")
+  # dev.new()
+  # plot(cor_thresholds,scores_list$tp,type="l")
+  # lines(cor_thresholds,scores_list$tn,type="l")
+  # lines(cor_thresholds,scores_list$fp,type="l")
+  # lines(cor_thresholds,scores_list$fn,type="l")
 
+  dev.new()
+  ggplot(scores_block1, aes(cor_thresholds,value,color=variable) ) +
+    geom_line()
+  dev.new()
+  ggplot(scores_block2, aes(cor_thresholds,value,color=variable) ) +
+    geom_line()
+  dev.new()
+  ggplot(scores_block3, aes(cor_thresholds,value,color=variable) ) +
+    geom_line()
 
 }
 
@@ -764,15 +784,28 @@ Ag_validation <- function () {
 #' @param gt Ground truth: Positive values
 #' @param pos Classified positives
 #' @param neg Classified negatives
-#' @value List with all the computed scores. It includes F1 score and Brier score. As well as the number of
+#' @param m Masses values found in the image
+#'
+#' @return List with all the computed scores. It includes F1 score and Brier score. As well as the number of
 #'
 #'
 #' @export
-compute_scores <- function (gt,pos,neg) {
-  tp_list=intersect(pos,gt) #true positive
-  fp_list=which(!is.element(pos,tp)) #setdiff(pos,tp) #false positive
-  fn_list=intersect(neg,gt) #false negative
-  tn_list=which(!is.element(neg,fn))#setdiff(neg,fn) #true negative
+compute_scores <- function (gt,pos,neg,m) {
+  tol=2000e-6
+
+  #adjust ground truth
+  gt=gt[which(apply(abs(outer(m,gt,'-')),2,min)/pos<tol)]
+
+  #compute tp, tn, fp, fn
+  tp_list=pos[which(apply(abs(outer(gt,pos,'-')),2,min)/pos<tol)]
+  fp_list=which(!is.element(pos,tp))
+  fn_list=pos[which(apply(abs(outer(gt,neg,'-')),2,min)/neg<tol)]
+  tn_list=which(!is.element(neg,fn))
+
+  # tp_list=intersect(pos,gt) #true positive
+  # fp_list=which(!is.element(pos,tp)) #setdiff(pos,tp) #false positive
+  # fn_list=intersect(neg,gt) #false negative
+  # tn_list=which(!is.element(neg,fn))#setdiff(neg,fn) #true negative
 
   tp=length(tp_list)
   fp=length(fp_list)

@@ -4,7 +4,8 @@
 \alias{removeMatrix_compareAu}
 \title{Remove Matrix Compare Au}
 \usage{
-removeMatrix_compareAu(pks_Norharmane, pks_Au, use_average = FALSE)
+removeMatrix_compareAu(pks_Norharmane, pks_Au, use_average = FALSE,
+  align_calib = "rMSIproc")
 }
 \arguments{
 \item{pks_Norharmane}{Peak Matrix}
@@ -12,6 +13,8 @@ removeMatrix_compareAu(pks_Norharmane, pks_Au, use_average = FALSE)
 \item{pks_Au}{Peak Matrix with gold coating}
 
 \item{use_average}{Use average of each region if true. Use all the pixels in the region if false.}
+
+\item{align_calib}{Alignement and calibration algorithm to use. "old": merges the peaks that are within a fixed threshold m/z distance. "rMSIproc": uses the function MergePeakMatrices in rMSIproc}
 }
 \value{
 List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
