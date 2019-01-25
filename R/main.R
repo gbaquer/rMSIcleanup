@@ -749,9 +749,10 @@ Ag_validation <- function () {
     }
   }
   scores_list[["cor_thresholds"]]=cor_thresholds
+  scores_list=data.frame(scores_list)
   scores_block1=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("f1_score","b_score"))
   scores_block2=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("p","r"))
-  scores_block3=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("tp","tn","fp","fn"))
+  scores_block3=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("tp","fp","fn","tn"))
   #[Add ggplots]
   # dev.new()
   # plot(cor_thresholds,scores_list$f1_score,type="l")
@@ -765,15 +766,15 @@ Ag_validation <- function () {
   # lines(cor_thresholds,scores_list$fp,type="l")
   # lines(cor_thresholds,scores_list$fn,type="l")
 
-  dev.new()
-  ggplot(scores_block1, aes(cor_thresholds,value,color=variable) ) +
-    geom_line()
-  dev.new()
-  ggplot(scores_block2, aes(cor_thresholds,value,color=variable) ) +
-    geom_line()
-  dev.new()
-  ggplot(scores_block3, aes(cor_thresholds,value,color=variable) ) +
-    geom_line()
+  #dev.new()
+  plot1= ggplot(scores_block1, aes(cor_thresholds,value,color=variable) ) + geom_line()
+  #dev.new()
+  plot2=ggplot(scores_block2, aes(cor_thresholds,value,color=variable) ) + geom_line()
+  #dev.new()
+  plot3=ggplot(scores_block3, aes(cor_thresholds,value,fill=variable) ) + geom_area(stat = "identity")
+
+  print(plot2)
+  print(grid.arrange(plot1,plot3))
 
 }
 
@@ -791,16 +792,16 @@ Ag_validation <- function () {
 #'
 #' @export
 compute_scores <- function (gt,pos,neg,m) {
-  tol=2000e-6
+  tol=200e-6
 
   #adjust ground truth
-  gt=gt[which(apply(abs(outer(m,gt,'-')),2,min)/pos<tol)]
+  gt=gt[which(apply(abs(outer(m,gt,'-')),2,min)/gt<tol)]
 
   #compute tp, tn, fp, fn
   tp_list=pos[which(apply(abs(outer(gt,pos,'-')),2,min)/pos<tol)]
-  fp_list=which(!is.element(pos,tp))
-  fn_list=pos[which(apply(abs(outer(gt,neg,'-')),2,min)/neg<tol)]
-  tn_list=which(!is.element(neg,fn))
+  fp_list=setdiff(pos,tp_list)#which(!is.element(pos,tp_list))
+  fn_list=neg[which(apply(abs(outer(gt,neg,'-')),2,min)/neg<tol)]
+  tn_list=setdiff(neg,fn_list)#which(!is.element(neg,fn_list))
 
   # tp_list=intersect(pos,gt) #true positive
   # fp_list=which(!is.element(pos,tp)) #setdiff(pos,tp) #false positive
