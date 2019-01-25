@@ -263,7 +263,7 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,exo_m
 
 
   print("a")
-  return(nonbio_peaks)
+  return(spec_clus_out$cluster==1)
 }
 
 #' Remove Matrix Padded
