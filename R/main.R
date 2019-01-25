@@ -139,7 +139,7 @@ plot_image_summary <- function () {
 #'
 #'
 #' @export
-removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,max_exo=10) {
+removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,exo_method=1,max_exo=10) {
 
   #SECTION 0 :: Preprocessing
   # Select first image if there are multiple
@@ -175,8 +175,6 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,max_e
 
   sorted_clusters=sort(clus$size,index.return=TRUE,decreasing = TRUE)$ix
 
-  mean_1=apply(pks$intensity[which(clus$cluster==sorted_clusters[1]),],2,mean,lwd = 3,lend=1)
-  mean_2=apply(pks$intensity[which(clus$cluster==sorted_clusters[1]),],2,mean,lwd = 3,lend=1)
 
   # Smooth the cluster
   #[PENDING]
@@ -194,26 +192,77 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,max_e
 
   # Automatically find the exogenous peaks with no supervision
   #A.1. Load manually identified peaks outside of tissue
-  exo_peaks <- c(431.6194,970.1442)
-  exo_is=double()
-  for (p in exo_peaks)
-    exo_is=append(exo_is,match(TRUE,pks$mass>=p))
+
 
   #A.2. Get peaks with highest correlation to the manually identified peaks (to find other likely exogenous peaks)
   corMAT=cor(pks$intensity)
 
   #Rank correlation of exo indices [IMPROVE: get the "max_exo" elements that correlate the best to the three of them]
-  # top_exo_mat=integer()
-  # for (i in exo_is)
-  #   top_exo_mat=cbind(top_exo_mat,sort(corMAT[i,],decreasing=TRUE,index.return=TRUE)$ix)
-  # top_exo=unique(as.vector(t(top_exo_mat)))[1:max_exo]
+  # if(exo_method==1)
+  # {
+  #   exo_peaks <- c(431.6194,970.1442)
+  #   exo_is=double()
+  #   for (p in exo_peaks)
+  #     exo_is=append(exo_is,match(TRUE,pks$mass>=p))
+  #
+  #   top_exo_mat=integer()
+  #   for (i in exo_is)
+  #    top_exo_mat=cbind(top_exo_mat,sort(corMAT[i,],decreasing=TRUE,index.return=TRUE)$ix)
+  #   top_exo=unique(as.vector(t(top_exo_mat)))[1:max_exo]
+  # }
+  # if(exo_method==2)
+  # {
+  #   mean_in=apply(pks$intensity[which(clus$cluster==sorted_clusters[1]),],2,mean,lwd = 3,lend=1)
+  #   mean_out=apply(pks$intensity[which(clus$cluster==sorted_clusters[2]),],2,mean,lwd = 3,lend=1)
+  #   top_exo=sort(abs((mean_in-mean_out)/pmax(mean_in,mean_out)),decreasing = TRUE,index.return=TRUE)$ix[1:max_exo]
+  # }
+  # if(exo_method==3)
+  # {
+  #   mean_in=apply(pks$intensity[which(clus$cluster==sorted_clusters[1]),],2,mean,lwd = 3,lend=1)
+  #   mean_out=apply(pks$intensity[which(clus$cluster==sorted_clusters[2]),],2,mean,lwd = 3,lend=1)
+  #   # It is not ok since the sorted_clusters returns
+  #   #Find peaks with higher correlation among each region
+  #   corMAT_in=cor(pks$intensity[which(clus$cluster==sorted_clusters[1]),])
+  #   corMAT_out=cor(pks$intensity[which(clus$cluster==sorted_clusters[2]),])
+  #   # clusCOR=corMAT[which(clus$cluster==sorted_clusters[1]),which(clus$cluster==sorted_clusters[2])]
+  #   # top_exo
+  #   exo_is=intersect(which(mean_in>20),which(mean_out>5))
+  #   top_exo_mat=integer()
+  #   for (i in exo_is)
+  #     top_exo_mat=cbind(top_exo_mat,sort(corMAT[i,],decreasing=TRUE,index.return=TRUE)$ix)
+  #   top_exo=unique(as.vector(t(top_exo_mat)))[1:max_exo]
+  #
+  # }
+  # mean_exo_cor=apply(corMAT[top_exo,],2,mean)
+  # bio_peaks=which(mean_exo_cor<0)
+  # nonbio_peaks=which(mean_exo_cor>=cor_threshold)#0.65
 
-  top_exo=sort(abs((mean_1-mean_2)/pmax(mean_1,mean_2)),decreasing = TRUE,index.return=TRUE)$ix[1:10]
+  #Load ground truth
+  annotations_Ag=read.table("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/Ag.ref")
+  gt=annotations_Ag[[2]]
+  m=pks$mass
+  tol=200e-6
+  gt_pch=8*(apply(abs(outer(gt,m,'-')),2,min)/m<tol)
 
-  mean_exo_cor=apply(corMAT[top_exo,],2,mean)
-  bio_peaks=which(mean_exo_cor<0)
-  nonbio_peaks=which(mean_exo_cor>=cor_threshold)#0.65
+  #Calculate spectral correlation
+  corMAT_in=cor(pks$intensity[which(clus$cluster==sorted_clusters[1]),])
+  corMAT_out=cor(pks$intensity[which(clus$cluster==sorted_clusters[2]),])
+  spec_clus_in=kmeans(corMAT_in,centers = 2)
+  spec_clus_out=kmeans(corMAT_out,centers = 2)
 
+  #PLOT PCA
+  pca_in=prcomp(corMAT_in)
+  pca_plot_in=plot(pca_in$x[,1:2],pch=gt_pch,col=spec_clus_in$cluster,xlab=paste("PC1",round(100*pca_in$sdev[1]/sum(pca_in$sdev),2),"%"),ylab=paste("PC2",round(100*pca_in$sdev[2]/sum(pca_in$sdev)),"%"),lwd=3)
+  print(pca_plot_in)
+
+  pca_out=prcomp(corMAT_out)
+  pca_plot_out=plot(pca_out$x[,1:2],pch=gt_pch,col=spec_clus_out$cluster,xlab=paste("PC1",round(100*pca_out$sdev[1]/sum(pca_out$sdev),2),"%"),ylab=paste("PC2",round(100*pca_out$sdev[2]/sum(pca_out$sdev)),"%"),lwd=3)
+  print(pca_plot_out)
+
+
+
+
+  print("a")
   return(nonbio_peaks)
 }
 
@@ -711,7 +760,7 @@ Ag_validation <- function () {
   scores_list=list()
   for(ct in cor_thresholds)
   {
-    m1_indices=removeMatrix_padded_new(pks_Ag,cor_threshold = ct)
+    m1_indices=removeMatrix_padded_new(pks_Ag,cor_threshold = ct, exo_method = 3, max_exo=20)
     m1_masses=pks_Ag$mass[m1_indices]
 
     #False positive
