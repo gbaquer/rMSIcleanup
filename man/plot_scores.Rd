@@ -2,7 +2,7 @@
 % Please edit documentation in R/main.R
 \name{plot_scores}
 \alias{plot_scores}
-\title{Compute scores}
+\title{Plot scores}
 \usage{
 plot_scores(x, scores_list)
 }

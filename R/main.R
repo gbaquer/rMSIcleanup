@@ -247,22 +247,21 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,exo_m
   #Calculate spectral correlation
   corMAT_in=cor(pks$intensity[which(clus$cluster==sorted_clusters[1]),])
   corMAT_out=cor(pks$intensity[which(clus$cluster==sorted_clusters[2]),])
-  spec_clus_in=kmeans(corMAT_in,centers = 2)
-  spec_clus_out=kmeans(corMAT_out,centers = 2)
+  spec_clus_in=kmeans(corMAT_in,centers = 3)
+  spec_clus_out=kmeans(corMAT_out,centers = 3)
 
   #PLOT PCA
-  pca_in=prcomp(corMAT_in)
-  pca_plot_in=plot(pca_in$x[,1:2],pch=gt_pch,col=spec_clus_in$cluster,xlab=paste("PC1",round(100*pca_in$sdev[1]/sum(pca_in$sdev),2),"%"),ylab=paste("PC2",round(100*pca_in$sdev[2]/sum(pca_in$sdev)),"%"),lwd=3)
-  print(pca_plot_in)
+  if(pkg_opt()$verbose_level<=-1)
+  {
+    pca_in=prcomp(corMAT_in)
+    pca_plot_in=plot(pca_in$x[,1:2],pch=gt_pch,col=spec_clus_in$cluster,xlab=paste("PC1",round(100*pca_in$sdev[1]/sum(pca_in$sdev),2),"%"),ylab=paste("PC2",round(100*pca_in$sdev[2]/sum(pca_in$sdev)),"%"),lwd=3)
+    print(pca_plot_in)
 
-  pca_out=prcomp(corMAT_out)
-  pca_plot_out=plot(pca_out$x[,1:2],pch=gt_pch,col=spec_clus_out$cluster,xlab=paste("PC1",round(100*pca_out$sdev[1]/sum(pca_out$sdev),2),"%"),ylab=paste("PC2",round(100*pca_out$sdev[2]/sum(pca_out$sdev)),"%"),lwd=3)
-  print(pca_plot_out)
+    pca_out=prcomp(corMAT_out)
+    pca_plot_out=plot(pca_out$x[,1:2],pch=gt_pch,col=spec_clus_out$cluster,xlab=paste("PC1",round(100*pca_out$sdev[1]/sum(pca_out$sdev),2),"%"),ylab=paste("PC2",round(100*pca_out$sdev[2]/sum(pca_out$sdev)),"%"),lwd=3)
+    print(pca_plot_out)
+  }
 
-
-
-
-  print("a")
   return(spec_clus_out$cluster==1)
 }
 
@@ -802,24 +801,9 @@ Ag_validation <- function () {
   scores_block1=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("f1_score","b_score"))
   scores_block2=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("p","r"))
   scores_block3=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("tp","fp","fn","tn"))
-  #[Add ggplots]
-  # dev.new()
-  # plot(cor_thresholds,scores_list$f1_score,type="l")
-  # lines(cor_thresholds,scores_list$b_score,type="l")
-  # dev.new()
-  # plot(cor_thresholds,scores_list$p,type="l")
-  # lines(cor_thresholds,scores_list$r,type="l")
-  # dev.new()
-  # plot(cor_thresholds,scores_list$tp,type="l")
-  # lines(cor_thresholds,scores_list$tn,type="l")
-  # lines(cor_thresholds,scores_list$fp,type="l")
-  # lines(cor_thresholds,scores_list$fn,type="l")
 
-  #dev.new()
   plot1= ggplot(scores_block1, aes(cor_thresholds,value,color=variable) ) + geom_line()
-  #dev.new()
   plot2=ggplot(scores_block2, aes(cor_thresholds,value,color=variable) ) + geom_line()
-  #dev.new()
   plot3=ggplot(scores_block3, aes(cor_thresholds,value,fill=variable) ) + geom_area(stat = "identity")
 
   print(plot2)
@@ -883,7 +867,7 @@ compute_scores <- function (gt,pos,neg,m) {
   }
   return(scores)
 }
-#' Compute scores
+#' Plot scores
 #'
 #' Returns several scores for performance assessment of a given binary classification result.
 #'
@@ -893,6 +877,123 @@ compute_scores <- function (gt,pos,neg,m) {
 #' @export
 plot_scores <- function (x,scores_list) {
 
+}
+
+#' Generate gold standard
+#'
+#' Given the matrix formula and the matrix peaks present in the image it returns the ground truth defined as the list of peaks present in the image that correspond to the matrix.
+#'
+#' @param matrix_formula String giving the chemical formula of the matrix in the enviPat notation
+#' @param pks Peak Matrix Image
+#' @param matching_method "loose": All peaks within a given tolerance are considered matrix peaks; "strict": Only peaks within a given tolerance that mantain the abundance ratios for each cluster are considered matrix peaks
+#' @param cor_threshold Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present and thus included in the gold truth (gt)
+#'
+#' @return Ground Truth: List of masses available in the image that correspond to the matrix.
+#'
+#' @export
+generate_gt <- function (matrix_formula,pks,matching_method="loose",cor_threshold=0.6) {
+  #0. Load data
+  data("isotopes")
+  data("adducts")
+
+  #1. Determine adducts depending on matrix_formula
+  adduct_list=c("")
+  if(matrix_formula=="Ag1")
+    adducts_list=c("","Cl1","N1O3")
+  #For more complex matrix formulas adducts could be loaded from the library
+  #adducts_formula=adducts$Formula_add[1:4]
+
+  #2. [Not implemented yet] Assess which mass range is needed
+
+  #Check max mass of the highest isotope and highest adduct. Divide and conquer.
+  # for(elem in union())
+  # tail(grep(elem,isotopes$element),1)
+
+  #3.Generate list of possible chemical formulas
+  base_forms=paste(matrix_formula,adducts_list,sep="")
+
+  #4.Generate pattern list with enviPat
+  patterns_out=NULL
+  clus_num=1
+  max_mass=rep(-1,length(base_forms))
+  MALDI_resolution=cbind(c(1040.189125,1295.508274,1342.789598,1607.565012,2089.834515,2468.085106,3148.93617,4548.463357),c(26012.14575,34514.17004,36437.24696,41497.97571,44939.27126,44534.41296,42510.12146,37044.53441))
+  dimnames(MALDI_resolution)[[2]]=c("m/z","R")
+  while(min(max_mass)<max(pks$mass))
+  {
+    forms=multiform(base_forms,clus_num)
+    #patterns=isopattern(isotopes,forms) [Improvement: The ppm threshold doesn't work]
+    checked=check_chemform(isotopes,forms)
+    patterns=isowrap(isotopes,checked,resmass = FALSE,resolution = 6400) #Used rule of thumb FWHM_res=ppm*32
+    #Append to final list
+    for(i in 1:length(patterns))
+    {
+      max_mass[i]=max(patterns[[i]][,1])
+      patterns_out$mass=append(patterns_out$mass,patterns[[i]][,1])
+      patterns_out$intensity=append(patterns_out$intensity,patterns[[i]][,2])
+      patterns_out$cluster=append(patterns_out$cluster,rep(attributes(patterns)$names[i],length(patterns[[i]][,1])))
+    }
+    clus_num=clus_num+1
+  }
+  #5. Determine matches with masses
+  tol=200e-6
+  gt=NULL
+  if(matching_method=="loose")
+  {
+    #All peaks within a given tolerance are considered matrix peaks
+    gt=pks$mass[which(apply(abs(outer(patterns_out[,1],pks$mass,'-')),2,min)/pks$mass<tol)]
+  }
+  if(matching_method=="strict")
+  {
+    #Only peaks within a given tolerance that mantain the abundance ratios for each cluster are considered matrix peaks
+    mean_image=apply(pks$intensity,2,mean)
+    clusters=unique(patterns_out$cluster)
+    correlations=NULL
+    for(c in clusters)
+    {
+      cluster_index=which(patterns_out$cluster==c)
+      cluster_mass=patterns_out$mass[cluster_index]
+      cluster_intensity=patterns_out$intensity[cluster_index]
+
+      image_index=apply(abs(outer(cluster_mass,pks$mass,'-')),1,function(x) sort(x,index.return=TRUE)$ix[1])#which(apply(abs(outer(cluster_mass,pks$mass,'-')),2,min)/pks$mass<tol)
+      image_mass=pks$mass[image_index]
+      image_intensity=mean_image[image_index]
+
+      rel_error=abs(image_mass-cluster_mass)/image_mass
+      image_intensity[which(rel_error>tol)]=0
+
+      correl=cor(cluster_intensity,image_intensity)
+      correlations=append(correlations,correl)
+
+      if(!is.na(correl))
+      {
+        if(correl>cor_threshold)
+        {
+          new_gt=unique(image_mass[which(apply(abs(outer(cluster_mass,image_mass,'-')),2,min)/image_mass<tol)])
+          print(new_gt)
+          gt=append(gt,new_gt)
+        }
+      }
+      #Print
+      if(pkg_opt()$verbose_level<=10)
+      {
+        if(max(image_intensity)!=0)
+          image_intensity=image_intensity/max(image_intensity)
+        if(max(cluster_intensity)!=0)
+          cluster_intensity=cluster_intensity/max(cluster_intensity)
+
+        print(paste(c,correl))
+        df=data.frame(mass=cluster_mass,cluster_intensity=cluster_intensity,image_intensity=image_intensity)
+        melted_df=melt(df, id.vars="mass",measure.vars=c("cluster_intensity","image_intensity"))
+        plot1= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point()
+        plot1=plot1 + ggtitle(paste(c,correl)) + xlab("m/z") + ylab("Rel Intensity")
+        print(plot1)
+
+        # grid.arrange(plot(cluster_mass,cluster_intensity),plot(image_mass,image_intensity))
+        print("---")
+      }
+    }
+  }
+  return(gt)
 }
 
 #' Export to mmass

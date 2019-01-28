@@ -12,6 +12,8 @@ compute_scores(gt, pos, neg, m)
 \item{pos}{Classified positives}
 
 \item{neg}{Classified negatives}
+
+\item{m}{Masses values found in the image}
 }
 \value{
 List with all the computed scores. It includes F1 score and Brier score. As well as the number of
