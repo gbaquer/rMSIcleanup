@@ -4,7 +4,7 @@
 \alias{generate_gt}
 \title{Generate gold standard}
 \usage{
-generate_gt(matrix_formula, pks, matching_method = "loose",
+generate_gt(matrix_formula, pks, matching_method = "strict",
   cor_threshold = 0.6)
 }
 \arguments{

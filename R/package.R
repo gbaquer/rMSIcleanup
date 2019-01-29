@@ -9,7 +9,7 @@
 #' @importFrom Rcpp evalCpp
 #' @importFrom stats cor cov kmeans prcomp sd
 #' @importFrom grDevices dev.new palette
-#' @importFrom utils write.table read.table
+#' @importFrom utils write.table read.table data
 #' @useDynLib rMSIcleanup, .registration = TRUE
 #' @name rMSIcleanup
 NULL

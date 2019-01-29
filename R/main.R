@@ -134,6 +134,7 @@ plot_image_summary <- function () {
 #' @param normalize Boolean value to determine if normalization is to be performed. If TRUE TIC normalization is performed
 #' @param cor_threshold Correlation threshold over which a given peak is considered to be a matrix peak
 #' @param max_exo Number of peaks used as base for the correlation
+#' @param exo_method Method to determine the reference matrix peaks
 #'
 #' @return List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
 #'
@@ -237,31 +238,39 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,exo_m
   # bio_peaks=which(mean_exo_cor<0)
   # nonbio_peaks=which(mean_exo_cor>=cor_threshold)#0.65
 
+  #[This section belongs in a plotting function]
   #Load ground truth
   annotations_Ag=read.table("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/Ag.ref")
-  gt=annotations_Ag[[2]]
+  gt=generate_gt("Ag1",pks)#annotations_Ag[[2]]
   m=pks$mass
-  tol=200e-6
-  gt_pch=8*(apply(abs(outer(gt,m,'-')),2,min)/m<tol)
+  pch_1=4
+  pch_2=20
+  gt_pch=abs(pch_1-pch_2)*(is.element(m,gt)==(pch_1>pch_2))+min(pch_1,pch_2)
 
   #Calculate spectral correlation
   corMAT_in=cor(pks$intensity[which(clus$cluster==sorted_clusters[1]),])
   corMAT_out=cor(pks$intensity[which(clus$cluster==sorted_clusters[2]),])
+  corMAT=cor(pks$intensity)
   spec_clus_in=kmeans(corMAT_in,centers = 3)
   spec_clus_out=kmeans(corMAT_out,centers = 3)
+  spec_clus=kmeans(corMAT,centers = 3)
 
   #PLOT PCA
-  if(pkg_opt()$verbose_level<=-1)
+  if(pkg_opt()$verbose_level<=10)
   {
-    pca_in=prcomp(corMAT_in)
-    pca_plot_in=plot(pca_in$x[,1:2],pch=gt_pch,col=spec_clus_in$cluster,xlab=paste("PC1",round(100*pca_in$sdev[1]/sum(pca_in$sdev),2),"%"),ylab=paste("PC2",round(100*pca_in$sdev[2]/sum(pca_in$sdev)),"%"),lwd=3)
+    pca_in=prcomp(corMAT_in,center=TRUE,scale=TRUE)
+    pca_plot_in=plot(pca_in$x[,1:2],pch=gt_pch,col=spec_clus_in$cluster,xlab=paste("PC1",round(100*pca_in$sdev[1]/sum(pca_in$sdev),2),"%"),ylab=paste("PC2",round(100*pca_in$sdev[2]/sum(pca_in$sdev)),"%"))
     print(pca_plot_in)
 
-    pca_out=prcomp(corMAT_out)
-    pca_plot_out=plot(pca_out$x[,1:2],pch=gt_pch,col=spec_clus_out$cluster,xlab=paste("PC1",round(100*pca_out$sdev[1]/sum(pca_out$sdev),2),"%"),ylab=paste("PC2",round(100*pca_out$sdev[2]/sum(pca_out$sdev)),"%"),lwd=3)
+    pca_out=prcomp(corMAT_out,center=TRUE,scale=TRUE)
+    pca_plot_out=plot(pca_out$x[,1:2],pch=gt_pch,col=spec_clus_out$cluster,xlab=paste("PC1",round(100*pca_out$sdev[1]/sum(pca_out$sdev),2),"%"),ylab=paste("PC2",round(100*pca_out$sdev[2]/sum(pca_out$sdev)),"%"))
     print(pca_plot_out)
-  }
 
+    pca=prcomp(corMAT,center=TRUE,scale=TRUE)
+    pca_plot=plot(pca$x[,1:2],pch=gt_pch,col=spec_clus$cluster,xlab=paste("PC1",round(100*pca$sdev[1]/sum(pca$sdev),2),"%"),ylab=paste("PC2",round(100*pca$sdev[2]/sum(pca$sdev)),"%"))
+    print(pca_plot)
+  }
+  print("hello")
   return(spec_clus_out$cluster==1)
 }
 
@@ -757,6 +766,7 @@ Ag_validation <- function () {
   #METHOD 1
   cor_thresholds=seq(0,1,length=10)
   scores_list=list()
+  gt=generate_gt("Ag1",pks_Ag)#annotations_Ag[[2]]
   for(ct in cor_thresholds)
   {
     m1_indices=removeMatrix_padded_new(pks_Ag,cor_threshold = ct, exo_method = 3, max_exo=20)
@@ -788,8 +798,6 @@ Ag_validation <- function () {
 
     pos=m1_masses
     neg=setdiff(pks_Ag$mass,m1_masses)
-    gt=annotations_Ag[[2]]
-
     scores=compute_scores(gt,pos,neg,pks_Ag$mass)
     for(a in attributes(scores)$names)
     {
@@ -800,8 +808,10 @@ Ag_validation <- function () {
   scores_list=data.frame(scores_list)
   scores_block1=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("f1_score","b_score"))
   scores_block2=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("p","r"))
-  scores_block3=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("tp","fp","fn","tn"))
+  scores_block3=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("tp","fn","fp","tn"))
 
+  value=NULL
+  variable=NULL
   plot1= ggplot(scores_block1, aes(cor_thresholds,value,color=variable) ) + geom_line()
   plot2=ggplot(scores_block2, aes(cor_thresholds,value,color=variable) ) + geom_line()
   plot3=ggplot(scores_block3, aes(cor_thresholds,value,fill=variable) ) + geom_area(stat = "identity")
@@ -825,15 +835,10 @@ Ag_validation <- function () {
 #'
 #' @export
 compute_scores <- function (gt,pos,neg,m) {
-  tol=200e-6
-
-  #adjust ground truth
-  gt=gt[which(apply(abs(outer(m,gt,'-')),2,min)/gt<tol)]
-
   #compute tp, tn, fp, fn
-  tp_list=pos[which(apply(abs(outer(gt,pos,'-')),2,min)/pos<tol)]
+  tp_list=intersect(gt,pos)#pos[which(apply(abs(outer(gt,pos,'-')),2,min)/pos<tol)]
   fp_list=setdiff(pos,tp_list)#which(!is.element(pos,tp_list))
-  fn_list=neg[which(apply(abs(outer(gt,neg,'-')),2,min)/neg<tol)]
+  fn_list=intersect(gt,neg)#neg[which(apply(abs(outer(gt,neg,'-')),2,min)/neg<tol)]
   tn_list=setdiff(neg,fn_list)#which(!is.element(neg,fn_list))
 
   # tp_list=intersect(pos,gt) #true positive
@@ -851,7 +856,7 @@ compute_scores <- function (gt,pos,neg,m) {
 
   scores=list()
   scores$f1_score= 2*(r*p)/(r+p) #F1 score
-  scores$b_score= (fp+fn)/(length(pos)+length(neg)) #Brier score
+  scores$b_score= (fp+fn)/(length(m)) #Brier score
   scores$tp=tp
   scores$fp=fp
   scores$fn=fn
@@ -891,10 +896,12 @@ plot_scores <- function (x,scores_list) {
 #' @return Ground Truth: List of masses available in the image that correspond to the matrix.
 #'
 #' @export
-generate_gt <- function (matrix_formula,pks,matching_method="loose",cor_threshold=0.6) {
+generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_threshold=0.6) {
   #0. Load data
-  data("isotopes")
-  data("adducts")
+  isotopes=NULL
+  data("isotopes", envir = environment())
+  adducts=NULL
+  data("adducts", envir=environment())
 
   #1. Determine adducts depending on matrix_formula
   adduct_list=c("")
@@ -923,7 +930,7 @@ generate_gt <- function (matrix_formula,pks,matching_method="loose",cor_threshol
     forms=multiform(base_forms,clus_num)
     #patterns=isopattern(isotopes,forms) [Improvement: The ppm threshold doesn't work]
     checked=check_chemform(isotopes,forms)
-    patterns=isowrap(isotopes,checked,resmass = FALSE,resolution = 6400) #Used rule of thumb FWHM_res=ppm*32
+    patterns=isowrap(isotopes,checked,resmass = FALSE,resolution = 20000) #Pere said between 20000 and 25000 #Used rule of thumb FWHM_res=ppm*32
     #Append to final list
     for(i in 1:length(patterns))
     {
@@ -968,13 +975,13 @@ generate_gt <- function (matrix_formula,pks,matching_method="loose",cor_threshol
       {
         if(correl>cor_threshold)
         {
-          new_gt=unique(image_mass[which(apply(abs(outer(cluster_mass,image_mass,'-')),2,min)/image_mass<tol)])
+          new_gt=image_mass[which(apply(abs(outer(cluster_mass,image_mass,'-')),2,min)/image_mass<tol)]
           print(new_gt)
           gt=append(gt,new_gt)
         }
       }
       #Print
-      if(pkg_opt()$verbose_level<=10)
+      if(pkg_opt()$verbose_level<=-1)
       {
         if(max(image_intensity)!=0)
           image_intensity=image_intensity/max(image_intensity)
@@ -984,6 +991,9 @@ generate_gt <- function (matrix_formula,pks,matching_method="loose",cor_threshol
         print(paste(c,correl))
         df=data.frame(mass=cluster_mass,cluster_intensity=cluster_intensity,image_intensity=image_intensity)
         melted_df=melt(df, id.vars="mass",measure.vars=c("cluster_intensity","image_intensity"))
+        value=NULL
+        variable=NULL
+        mass=NULL
         plot1= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point()
         plot1=plot1 + ggtitle(paste(c,correl)) + xlab("m/z") + ylab("Rel Intensity")
         print(plot1)
@@ -993,7 +1003,7 @@ generate_gt <- function (matrix_formula,pks,matching_method="loose",cor_threshol
       }
     }
   }
-  return(gt)
+  return(unique(gt))
 }
 
 #' Export to mmass

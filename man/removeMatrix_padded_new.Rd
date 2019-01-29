@@ -14,6 +14,8 @@ removeMatrix_padded_new(pks, normalize = TRUE, cor_threshold = 0.65,
 
 \item{cor_threshold}{Correlation threshold over which a given peak is considered to be a matrix peak}
 
+\item{exo_method}{Method to determine the reference matrix peaks}
+
 \item{max_exo}{Number of peaks used as base for the correlation}
 }
 \value{
