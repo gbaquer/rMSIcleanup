@@ -1,0 +1,227 @@
+#########################################################################
+#
+#     VALIDATION MODULE
+#
+#########################################################################
+#     rMSIcleanup - R package for MSI matrix removal
+#     Copyright (C) 2019 Gerard Baquer Gómez
+#
+#     This program is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+############################################################################
+
+#' Generate gold standard
+#'
+#' Given the matrix formula and the matrix peaks present in the image it returns the ground truth defined as the list of peaks present in the image that correspond to the matrix.
+#'
+#' @param matrix_formula String giving the chemical formula of the matrix in the enviPat notation
+#' @param pks Peak Matrix Image
+#' @param matching_method "loose": All peaks within a given tolerance are considered matrix peaks; "strict": Only peaks within a given tolerance that mantain the abundance ratios for each cluster are considered matrix peaks
+#' @param cor_threshold Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present and thus included in the gold truth (gt)
+#'
+#' @return Ground Truth: List of masses available in the image that correspond to the matrix.
+#'
+#' @export
+generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_threshold=0.85) {
+  #SECTION 0 :: Preprocessing
+  # Select first image if there are multiple
+  if(length(pks$numPixels)>1)
+  {
+    rows=1:pks$numPixels[1]
+
+    for(attr in attributes(pks)$names)
+    {
+      if(is.null(dim(pks[[attr]])))
+      {
+        if(attr!="mass")
+        {
+          pks[[attr]]=pks[[attr]][1]
+        }
+      }
+      else
+      {
+        pks[[attr]]=pks[[attr]][rows,]
+      }
+    }
+  }
+
+  # Normalize to TIC
+  pks$intensity=pks$intensity/pks$normalizations$TIC
+
+  #0. Load data
+  isotopes=NULL
+  data("isotopes", package = "enviPat", envir = environment())
+  adducts=NULL
+  data("adducts", package = "enviPat", envir=environment())
+
+  #1. Determine adducts depending on matrix_formula
+  adducts_list=c("")
+  #if(matrix_formula=="Ag1")
+  adducts_list=c("","Cl1","N1O3")
+  #For more complex matrix formulas adducts could be loaded from the library
+  #adducts_formula=adducts$Formula_add[1:4]
+
+  #2. [Not implemented yet] Assess which mass range is needed
+
+  #Check max mass of the highest isotope and highest adduct. Divide and conquer.
+  # for(elem in union())
+  # tail(grep(elem,isotopes$element),1)
+
+  #3.Generate list of possible chemical formulas
+  base_forms=paste(matrix_formula,adducts_list,sep="")
+
+  #4.Generate pattern list with enviPat
+  patterns_out=NULL
+  clus_num=1
+  max_mass=rep(-1,length(base_forms))
+  MALDI_resolution=cbind(c(1040.189125,1295.508274,1342.789598,1607.565012,2089.834515,2468.085106,3148.93617,4548.463357),c(26012.14575,34514.17004,36437.24696,41497.97571,44939.27126,44534.41296,42510.12146,37044.53441))
+  dimnames(MALDI_resolution)[[2]]=c("m/z","R")
+  while(min(max_mass)<max(pks$mass))
+  {
+    forms=multiform(base_forms,clus_num)
+    #patterns=isopattern(isotopes,forms) [Improvement: The ppm threshold doesn't work]
+    checked=check_chemform(isotopes,forms)
+    patterns=isowrap(isotopes,checked,resmass = FALSE,resolution = 20000) #Pere said between 20000 and 25000 #Used rule of thumb FWHM_res=ppm*32
+    #Append to final list
+    for(i in 1:length(patterns))
+    {
+      max_mass[i]=max(patterns[[i]][,1])
+      patterns_out$mass=append(patterns_out$mass,patterns[[i]][,1])
+      patterns_out$intensity=append(patterns_out$intensity,patterns[[i]][,2])
+      patterns_out$cluster=append(patterns_out$cluster,rep(attributes(patterns)$names[i],length(patterns[[i]][,1])))
+    }
+    clus_num=clus_num+1
+  }
+  #5. Determine matches with masses
+  tol=200e-6
+  gt=NULL
+  if(matching_method=="loose")
+  {
+    #All peaks within a given tolerance are considered matrix peaks
+    gt=pks$mass[which(apply(abs(outer(patterns_out[,1],pks$mass,'-')),2,min)/pks$mass<tol)]
+  }
+  if(matching_method=="strict")
+  {
+    #Only peaks within a given tolerance that mantain the abundance ratios for each cluster are considered matrix peaks
+    mean_image=apply(pks$intensity,2,mean)
+    clusters=unique(patterns_out$cluster)
+    correlations=NULL
+    for(c in clusters)
+    {
+      cluster_index=which(patterns_out$cluster==c)
+      cluster_mass=patterns_out$mass[cluster_index]
+      cluster_intensity=patterns_out$intensity[cluster_index]
+
+      image_index=apply(abs(outer(cluster_mass,pks$mass,'-')),1,function(x) sort(x,index.return=TRUE)$ix[1])#which(apply(abs(outer(cluster_mass,pks$mass,'-')),2,min)/pks$mass<tol)
+      image_mass=pks$mass[image_index]
+      image_intensity=mean_image[image_index]
+
+      rel_error=abs(image_mass-cluster_mass)/image_mass
+      image_intensity[which(rel_error>tol)]=0
+
+      correl=cor(cluster_intensity,image_intensity)
+      correlations=append(correlations,correl)
+
+      image_correl = round(apply(cor(pks$intensity[,image_index]),2,mean),digits = 2)
+      image_correl = append(rep("",length(image_correl)),image_correl)
+
+
+      if(!is.na(correl))
+      {
+        #[Include a metric that checks for correlation of the image]
+        if(correl>cor_threshold)
+        {
+          new_gt=image_mass[which(apply(abs(outer(cluster_mass,image_mass,'-')),2,min)/image_mass<tol)]
+          print(new_gt)
+          gt=append(gt,new_gt)
+        }
+      }
+      #Print
+      if(pkg_opt()$verbose_level<=-1)
+      {
+        if(max(image_intensity)!=0)
+          image_intensity=image_intensity/max(image_intensity)
+        if(max(cluster_intensity)!=0)
+          cluster_intensity=cluster_intensity/max(cluster_intensity)
+
+        print(paste(c,correl))
+        print(mean_image[image_index])
+        df=data.frame(mass=cluster_mass,cluster_intensity=cluster_intensity,image_intensity=image_intensity)
+        melted_df=melt(df, id.vars="mass",measure.vars=c("cluster_intensity","image_intensity"))
+        value=NULL
+        variable=NULL
+        mass=NULL
+        plot1= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point() + geom_text(aes(label=image_correl))
+        plot1=plot1 + ggtitle(paste(c,correl)) + xlab("m/z") + ylab("Rel Intensity")
+        print(plot1)
+
+        # grid.arrange(plot(cluster_mass,cluster_intensity),plot(image_mass,image_intensity))
+        print("---")
+      }
+    }
+  }
+  return(unique(gt))
+}
+
+
+#' Compute scores
+#'
+#' Returns several scores for performance assessment of a given binary classification result.
+#'
+#' @param gt Ground truth: Positive values
+#' @param pos Classified positives
+#' @param neg Classified negatives
+#' @param m Masses values found in the image
+#'
+#' @return List with all the computed scores. It includes F1 score and Brier score. As well as the number of
+#'
+#'
+#' @export
+compute_scores <- function (gt,pos,neg,m) {
+  #compute tp, tn, fp, fn
+  tp_list=intersect(gt,pos)#pos[which(apply(abs(outer(gt,pos,'-')),2,min)/pos<tol)]
+  fp_list=setdiff(pos,tp_list)#which(!is.element(pos,tp_list))
+  fn_list=intersect(gt,neg)#neg[which(apply(abs(outer(gt,neg,'-')),2,min)/neg<tol)]
+  tn_list=setdiff(neg,fn_list)#which(!is.element(neg,fn_list))
+
+  # tp_list=intersect(pos,gt) #true positive
+  # fp_list=which(!is.element(pos,tp)) #setdiff(pos,tp) #false positive
+  # fn_list=intersect(neg,gt) #false negative
+  # tn_list=which(!is.element(neg,fn))#setdiff(neg,fn) #true negative
+
+  tp=length(tp_list)
+  fp=length(fp_list)
+  fn=length(fn_list)
+  tn=length(tn_list)
+
+  p=tp/(tp+fp) #precision
+  r=tp/(tp+fn) #recall
+
+  scores=list()
+  scores$f1= 2*(r*p)/(r+p) #F1 score
+  scores$b= (fp+fn)/(length(m)) #Brier score
+  scores$tp=tp
+  scores$fp=fp
+  scores$fn=fn
+  scores$tn=tn
+  scores$p=p
+  scores$r=r
+
+  if(pkg_opt()$verbose_level<=-1)
+  {
+    print(paste("tp:",length(tp),"tn:",length(tn),"fp:",length(fp),"fn:",length(fn)))
+    print(paste("p:",p,"r:",r))
+    print(paste("F1 score:",scores$f1,"BS:",scores$b))
+  }
+  return(scores)
+}

@@ -27,7 +27,8 @@ Imports:
   reticulate,
   reshape2,
   ggplot2,
-  enviPat
+  enviPat,
+  tsne
 LinkingTo: Rcpp
 Suggests: 
     testthat
