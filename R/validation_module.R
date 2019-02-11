@@ -28,11 +28,12 @@
 #' @param pks Peak Matrix Image
 #' @param matching_method "loose": All peaks within a given tolerance are considered matrix peaks; "strict": Only peaks within a given tolerance that mantain the abundance ratios for each cluster are considered matrix peaks
 #' @param cor_threshold Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present and thus included in the gold truth (gt)
-#'
+#' @param generate_pdf Boolean indicating whether to generate a pdf or not
 #' @return Ground Truth: List of masses available in the image that correspond to the matrix.
 #'
 #' @export
-generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_threshold=0.85) {
+generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_threshold=0.85,generate_pdf=F) {
+
   #SECTION 0 :: Preprocessing
   # Select first image if there are multiple
   if(length(pks$numPixels)>1)
@@ -78,9 +79,13 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
   # tail(grep(elem,isotopes$element),1)
 
   #3.Generate list of possible chemical formulas
-  base_forms=paste(matrix_formula,adducts_list,sep="")
+  base_forms=NULL
+  for(i in 1:10)
+  {
+    base_forms=append(base_forms,paste(multiform(matrix_formula,i),adducts_list,sep=""))
+  }
 
-  #4.Generate pattern list with enviPat
+  #5.Generate pattern list with enviPat
   patterns_out=NULL
   clus_num=1
   max_mass=rep(-1,length(base_forms))
@@ -91,6 +96,9 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
     forms=multiform(base_forms,clus_num)
     #patterns=isopattern(isotopes,forms) [Improvement: The ppm threshold doesn't work]
     checked=check_chemform(isotopes,forms)
+    checked=checked[which(checked$monoisotopic_mass<max(pks$mass)),]
+    if(nrow(checked)==0)
+      break;
     patterns=isowrap(isotopes,checked,resmass = FALSE,resolution = 20000) #Pere said between 20000 and 25000 #Used rule of thumb FWHM_res=ppm*32
     #Append to final list
     for(i in 1:length(patterns))
@@ -130,7 +138,11 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
       image_intensity[which(rel_error>tol)]=0
 
       correl=cor(cluster_intensity,image_intensity)
+      if(length(cluster_index)==1)
+        correl=1
+
       correlations=append(correlations,correl)
+
 
       image_correl = round(apply(cor(pks$intensity[,image_index]),2,mean),digits = 2)
       image_correl = append(rep("",length(image_correl)),image_correl)
@@ -147,6 +159,14 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
         }
       }
       #Print
+      if(generate_pdf)
+      {
+        #new page
+        #Cluster name, correlation, iimage_correlation
+        #peak alignement plot
+        #Images plot
+        #correlation matrix
+      }
       if(pkg_opt()$verbose_level<=-1)
       {
         if(max(image_intensity)!=0)
@@ -170,6 +190,33 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
       }
     }
   }
+  #4. Open pdf report
+  if(generate_pdf)
+  {
+    #Generate pdf name [pks$name_001]
+    pdf_file=paste("output/",pks_Ag$names[1],"_000.pdf",sep="")
+    i=0
+    while(file.exists(pdf_file))
+    {
+      i=i+1
+      pdf_file=paste("output/",pks_Ag$names[1],"_",str_pad(i, 3, pad = "0"),".pdf",sep="")
+    }
+    #open pdf file
+    pdf(pdf_file,paper='a4')
+    #First page of metadata [File name, mean image, matrix formula, adducts list, base forms, cor_threshold]
+    # text=NULL
+    # text=append(text,paste("- File_name:",pks$names[1]))
+    # text=append(text,paste("- Masses:",pks$mass))
+    # text=append(text,paste("- Matrix formula:",matrix_formula))
+    # text=append(text,paste("- Adducts list:",adducts_list))
+    # text=append(text,paste("- Base forms:",base_forms))
+    # text=append(text,paste("- Correlation threshold:",cor_threshold))
+    #
+    # text=paste(text,sep = "/n")
+    print(plot_text("Hello World!"))
+    dev.off()
+  }
+
   return(unique(gt))
 }
 
@@ -181,13 +228,12 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
 #' @param gt Ground truth: Positive values
 #' @param pos Classified positives
 #' @param neg Classified negatives
-#' @param m Masses values found in the image
 #'
 #' @return List with all the computed scores. It includes F1 score and Brier score. As well as the number of
 #'
 #'
 #' @export
-compute_scores <- function (gt,pos,neg,m) {
+compute_scores <- function (gt,pos,neg) {
   #compute tp, tn, fp, fn
   tp_list=intersect(gt,pos)#pos[which(apply(abs(outer(gt,pos,'-')),2,min)/pos<tol)]
   fp_list=setdiff(pos,tp_list)#which(!is.element(pos,tp_list))
@@ -209,7 +255,7 @@ compute_scores <- function (gt,pos,neg,m) {
 
   scores=list()
   scores$f1= 2*(r*p)/(r+p) #F1 score
-  scores$b= (fp+fn)/(length(m)) #Brier score
+  scores$b= (fp+fn)/(length(pos)+length(neg)) #Brier score
   scores$tp=tp
   scores$fp=fp
   scores$fn=fn

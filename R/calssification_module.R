@@ -36,7 +36,7 @@
 #'
 #'
 #' @export
-removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,exo_method=1,max_exo=10) {
+removeMatrix_padded_new <- function (pks,normalize=TRUE,matrix_cor=0.65,tissue_cor=0.6,exo_method=1,max_exo=10) {
 
   #SECTION 0 :: Preprocessing
   # Select first image if there are multiple
@@ -97,7 +97,8 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,exo_m
   #Rank correlation of exo indices [IMPROVE: get the "max_exo" elements that correlate the best to the three of them]
   if(exo_method==1)
   {
-    exo_peaks <- c(431.6194,970.1442)
+    #exo_peaks <- c(431.6194,970.1442) #Ag
+    exo_peaks <- c(393.9340408,984.8335478) #Au
     exo_is=double()
     for (p in exo_peaks)
       exo_is=append(exo_is,match(TRUE,pks$mass>=p))
@@ -160,13 +161,18 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE,cor_threshold=0.65,exo_m
         matrix_cluster=i
       }
     }
-    result=which(spec_clus_out$cluster==matrix_cluster)
+    result=list()
+    result$pos=which(spec_clus_out$cluster==matrix_cluster)
+    result$neg=which(spec_clus_out$cluster!=matrix_cluster)
+    result$unknown=NULL
   }
   else{
     mean_exo_cor=apply(corMAT[top_exo,],2,mean)
     bio_peaks=which(mean_exo_cor<0)
-    nonbio_peaks=which(mean_exo_cor>=cor_threshold)#0.65
-    result=nonbio_peaks
+    result=list()
+    result$pos=which(mean_exo_cor>=matrix_cor)
+    result$neg=which(mean_exo_cor<=tissue_cor)
+    result$unknown=which(mean_exo_cor>tissue_cor & mean_exo_cor<matrix_cor)
   }
 
   return(result)

@@ -28,7 +28,8 @@ Imports:
   reshape2,
   ggplot2,
   enviPat,
-  tsne
+  tsne,
+  stringr
 LinkingTo: Rcpp
 Suggests: 
     testthat

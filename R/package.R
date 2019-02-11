@@ -10,6 +10,7 @@
 #' @importFrom stats cor cov kmeans prcomp sd
 #' @importFrom grDevices dev.new palette
 #' @importFrom utils write.table read.table data
+#' @importFrom stringr str_pad
 #' @useDynLib rMSIcleanup, .registration = TRUE
 #' @name rMSIcleanup
 NULL

@@ -63,7 +63,7 @@ cross_validation <- function () {
   print(distance_matrix)
 }
 
-#' Ag validation.
+#' Benchmark.
 #'
 #' Compare the results of all methods to assess consistency.
 #'
@@ -71,60 +71,38 @@ cross_validation <- function () {
 #'
 #'
 #' @export
-Ag_validation <- function () {
+benchmark <- function () {
   #LOAD DATA
   pks_Ag <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-mergeddata-peaks.zip")
   pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Au-mergeddata-peaks.zip")
 
-  #LOAD Ag ANNOTATIONS
-  annotations_Ag=read.table("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/Ag.ref")
+  #SELECT INPUT
+  pks=pks_Au
+  chemical_formula="Au1"
 
-  #METHOD 1
-  cor_thresholds=seq(0,1,length=10)
+  #BENCHMARK METHOD
+  cor_thresholds=seq(0.6,1,length=100)
   scores_list=list()
-  gt=generate_gt("Ag1",pks_Ag)#annotations_Ag[[2]]
+  gt=generate_gt(chemical_formula,pks)#annotations_Ag[[2]]
   for(ct in cor_thresholds)
   {
-    m1_indices=removeMatrix_padded_new(pks_Ag,cor_threshold = ct, exo_method = 1, max_exo=20)
-    m1_masses=pks_Ag$mass[m1_indices]
-
-    #False positive
-    #False negative
-    #1 metric
-    #PRINT REPORT
-    if(pkg_opt()$verbose_level<=-1)
-    {
-      print("GROUND TRUTH: ANNOTATED Ag")
-      print(annotations_Ag[[2]])
-      print("METHOD 1: PADDED")
-      print(paste("NUM PEAKS:",length(m1_indices),"PERCENTAGE:",100*length(m1_indices)/length(pks_Ag$mass)))
-      print("IDX'S:")
-      print(m1_indices)
-      print("MASSES:")
-      print(m1_masses)
-      print("SIMILARITIES")
-      distance_matrix=abs(outer(m1_masses,annotations_Ag[[2]],'-'))
-      print(sort(distance_matrix)[1:100])
-    }
-    #figures of merit
-    # digits=1
-    # pos=round(m1_masses,digits=digits)
-    # neg=round(setdiff(pks_Ag$mass,m1_masses),digits=digits)
-    # gt=round(annotations_Ag[[2]],digits=digits)
-
-    pos=m1_masses
-    neg=setdiff(pks_Ag$mass,pos)
-    scores=compute_scores(gt,pos,neg,pks_Ag$mass)
+    results=removeMatrix_padded_new(pks,matrix_cor = ct, exo_method = 1, max_exo=5)
+    pos=pks$mass[results$pos]
+    neg=pks$mass[results$neg]
+    scores=compute_scores(gt,pos,neg)
     for(a in attributes(scores)$names)
     {
       scores_list[[a]]=append(scores_list[[a]],scores[[a]])
     }
+    scores_list$u=append(scores_list$u,length(results$unknown))
   }
+
+  #PLOT
   scores_list[["cor_thresholds"]]=cor_thresholds
   scores_list=data.frame(scores_list)
   scores_block1=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("f1","b"))
   scores_block2=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("p","r"))
-  scores_block3=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("tp","fn","fp","tn"))
+  scores_block3=melt(scores_list, id.vars="cor_thresholds",measure.vars=c("u","tp","fn","fp","tn"))
 
   value=NULL
   variable=NULL

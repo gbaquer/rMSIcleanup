@@ -161,6 +161,10 @@ plot_pca <- function (pks,normalize=TRUE,num_clusters=2,correlation_order=0) {
     corMAT_out=t(corMAT_out)
     corMAT=t(corMAT)
   }
+  else if(correlation_order==-1)
+  {
+    corMAT=sum()
+  }
   else
   {
     i=0

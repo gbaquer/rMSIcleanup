@@ -51,6 +51,51 @@ pkg_opt= set_opt(
   )
 )
 
+#' Cosine similarity two vectors
+#'
+#' Returns the cosine similarity between two vectors
+#'
+#' @param ix Input vectors
+#'
+cos_sim_vectors <- function(ix)
+{
+  A = X[ix[1],]
+  B = X[ix[2],]
+  return( sum(A*B)/sqrt(sum(A^2)*sum(B^2)) )
+}
+
+#' Cosine similarity two vectors
+#'
+#' Returns the cosine similarity between two vectors
+#'
+#' @param X Input matrix
+#'
+cos_sim <- function(X)
+{
+  n <- nrow(X)
+  cmb <- expand.grid(i=1:n, j=1:n)
+  C <- matrix(apply(cmb,1,cos_sim_vectors),n,n)
+  return(C)
+}
+#' Plot text
+#'
+#' Plots text with white background
+#'
+#' @param text Text to be plotted
+#' @param size Size of the text
+#'
+plot_text <- function(text,size=8)
+{
+  p=ggplot() + annotate("text", x = 0, y = 0, size=size, label = text) +
+    scale_x_continuous(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0)) + theme(axis.line=element_blank(),axis.text.x=element_blank(),
+                                              axis.text.y=element_blank(),axis.ticks=element_blank(),
+                                              axis.title.x=element_blank(),
+                                              axis.title.y=element_blank(),legend.position="none",
+                                              panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
+                                              panel.grid.minor=element_blank(),plot.background=element_blank())
+  return(p)
+}
 #' Specify decimal
 #'
 #' Exports the results to a text file which can be read by mmass for easy interpretation and validation of the results.
