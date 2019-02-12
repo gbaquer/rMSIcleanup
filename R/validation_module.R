@@ -68,7 +68,7 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
   #1. Determine adducts depending on matrix_formula
   adducts_list=c("")
   #if(matrix_formula=="Ag1")
-  adducts_list=c("","Cl1","N1O3")
+  #adducts_list=c("","Cl1","N1O3")
   #For more complex matrix formulas adducts could be loaded from the library
   #adducts_formula=adducts$Formula_add[1:4]
 
@@ -80,12 +80,54 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
 
   #3.Generate list of possible chemical formulas
   base_forms=NULL
-  for(i in 1:10)
+  for(i in 1:1)
   {
     base_forms=append(base_forms,paste(multiform(matrix_formula,i),adducts_list,sep=""))
   }
 
+  #4. Open pdf report
+  if(generate_pdf)
+  {
+    #Generate pdf name [pks$name_001]
+    pdf_file=paste("output/",pks_Ag$names[1],"_000.pdf",sep="")
+    i=0
+    while(file.exists(pdf_file))
+    {
+      i=i+1
+      pdf_file=paste("output/",pks_Ag$names[1],"_",str_pad(i, 3, pad = "0"),".pdf",sep="")
+    }
+    #open pdf file
+    a4_width=8.27
+    a4_height=11.69
+    pdf(pdf_file,paper='a4',width=a4_width,height=a4_height)
+    #First page of metadata [File name, mean image, matrix formula, adducts list, base forms, cor_threshold]
+    text=NULL
+    text=append(text,"###################################################################")
+    text=append(text,"IMAGE INFORMATION")
+    text=append(text,paste(strwrap(paste("- File_name:",pks$names[1])),collapse = "\n"))
+    text=append(text,paste(strwrap(paste("- Number of peaks:",length(pks$mass))),collapse = "\n"))
+    text=append(text,paste(strwrap(paste("- Number of pixels:",pks$numPixels[1])),collapse = "\n"))
+    text=append(text,paste(strwrap(paste("- Mass Range: [",min(pks$mass),", ", max(pks$mass),"]")),collapse = "\n"))
+    text=append(text,paste(strwrap(paste("- Masses:",paste(pks$mass,collapse="; "))),collapse = "\n"))
+    text=append(text,"###################################################################")
+    text=append(text,"MATRIX INFORMATION")
+    text=append(text,paste(strwrap(paste("- Matrix formula:",matrix_formula)),collapse = "\n"))
+    text=append(text,paste(strwrap(paste("- Adducts list:",paste(adducts_list,collapse="; "))),collapse = "\n"))
+    text=append(text,paste(strwrap(paste("- Base forms:",paste(base_forms,collapse="; "))),collapse = "\n"))
+    text=append(text,paste(strwrap(paste("- Correlation threshold:",cor_threshold)),collapse = "\n"))
+    text=append(text,"###################################################################")
+
+    text=paste(text,collapse = "\n")
+    print(plot_text(text))
+  }
+
   #5.Generate pattern list with enviPat
+  page_layout=rbind(c(1,1,2,2),
+                    c(1,1,2,2),
+                    c(3,4,5,6),
+                    c(7,8,9,10),
+                    c(11,12,13,14),
+                    c(15,16,17,18))
   patterns_out=NULL
   clus_num=1
   max_mass=rep(-1,length(base_forms))
@@ -144,8 +186,9 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
       correlations=append(correlations,correl)
 
 
-      image_correl = round(apply(cor(pks$intensity[,image_index]),2,mean),digits = 2)
-      image_correl = append(rep("",length(image_correl)),image_correl)
+      image_correl_matrix=cor(pks$intensity[,image_index])
+      image_correl = round(apply(image_correl_matrix,2,mean),digits = 2)
+      image_correl_labels = append(rep("",length(image_correl)),image_correl)
 
 
       if(!is.na(correl))
@@ -159,15 +202,7 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
         }
       }
       #Print
-      if(generate_pdf)
-      {
-        #new page
-        #Cluster name, correlation, iimage_correlation
-        #peak alignement plot
-        #Images plot
-        #correlation matrix
-      }
-      if(pkg_opt()$verbose_level<=-1)
+      if(pkg_opt()$verbose_level<=-1 || generate_pdf)
       {
         if(max(image_intensity)!=0)
           image_intensity=image_intensity/max(image_intensity)
@@ -181,39 +216,37 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
         value=NULL
         variable=NULL
         mass=NULL
-        plot1= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point() + geom_text(aes(label=image_correl))
-        plot1=plot1 + ggtitle(paste(c,correl)) + xlab("m/z") + ylab("Rel Intensity")
-        print(plot1)
+        # plot1= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point() + geom_text(aes(label=image_correl))
+        # plot1=plot1 + ggtitle(paste(c,correl)) + xlab("m/z") + ylab("Rel Intensity")
+        # print(grid.arrange(plot1,plot1,plot1,plot1,layout_matrix=page_layout))
 
-        # grid.arrange(plot(cluster_mass,cluster_intensity),plot(image_mass,image_intensity))
+        plt_correl= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point() + geom_text(aes(label=image_correl_labels))
+        plt_correl=plt_correl + ggtitle(paste(c,round(correl,2),round(mean(image_correl),2))) + xlab("m/z") + ylab("Rel Intensity")
+        plt_example=plt_correl
+        text=paste(apply(round(image_correl_matrix,2),1,paste,collapse=" "),collapse="\n")
+        plt_text=plot_text(text)
+        plt_text=levelplot(image_correl_matrix)
+        plts=list(plt_correl,plt_text)
+        for(i in image_index)
+          plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,i],paste("m/z",pks$mass[i]))))
+
+
+        #Generate images
+        #for(i in 1:length)
+        grid.arrange(grobs=plts,layout_matrix=page_layout)
+
+        #grid.arrange(plot(cluster_mass,cluster_intensity),plot(image_mass,image_intensity))
         print("---")
       }
     }
   }
-  #4. Open pdf report
+
+
+  #Each page
+
+  # Close file
   if(generate_pdf)
   {
-    #Generate pdf name [pks$name_001]
-    pdf_file=paste("output/",pks_Ag$names[1],"_000.pdf",sep="")
-    i=0
-    while(file.exists(pdf_file))
-    {
-      i=i+1
-      pdf_file=paste("output/",pks_Ag$names[1],"_",str_pad(i, 3, pad = "0"),".pdf",sep="")
-    }
-    #open pdf file
-    pdf(pdf_file,paper='a4')
-    #First page of metadata [File name, mean image, matrix formula, adducts list, base forms, cor_threshold]
-    # text=NULL
-    # text=append(text,paste("- File_name:",pks$names[1]))
-    # text=append(text,paste("- Masses:",pks$mass))
-    # text=append(text,paste("- Matrix formula:",matrix_formula))
-    # text=append(text,paste("- Adducts list:",adducts_list))
-    # text=append(text,paste("- Base forms:",base_forms))
-    # text=append(text,paste("- Correlation threshold:",cor_threshold))
-    #
-    # text=paste(text,sep = "/n")
-    print(plot_text("Hello World!"))
     dev.off()
   }
 

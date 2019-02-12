@@ -84,18 +84,51 @@ cos_sim <- function(X)
 #' @param text Text to be plotted
 #' @param size Size of the text
 #'
-plot_text <- function(text,size=8)
+# plot_text <- function(text, size=5)
+# {
+#   default <- par()
+#   par(mar = rep(1, 4))
+#   par(oma = rep(0, 4))
+#   plot(NA, xlim=c(0,1), ylim=c(0,1), bty='n',
+#        xaxt='n', yaxt='n', xlab='', ylab='')
+#   text(0,1,text, pos=4)
+#   par(default)
+# }
+plot_text <- function(text,size=3)
 {
-  p=ggplot() + annotate("text", x = 0, y = 0, size=size, label = text) +
-    scale_x_continuous(expand=c(0,0)) +
-    scale_y_continuous(expand=c(0,0)) + theme(axis.line=element_blank(),axis.text.x=element_blank(),
-                                              axis.text.y=element_blank(),axis.ticks=element_blank(),
-                                              axis.title.x=element_blank(),
-                                              axis.title.y=element_blank(),legend.position="none",
-                                              panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
-                                              panel.grid.minor=element_blank(),plot.background=element_blank())
+  p=ggplot() + geom_label()+ annotate("text", x = 0:1, y = c(1,0), size=size, label = c(text,NA), vjust=1,hjust=0) +
+    coord_fixed(sqrt(2),expand = F)+
+    theme(axis.line=element_blank(),axis.text.x=element_blank(),
+          axis.text.y=element_blank(),axis.ticks=element_blank(),
+          axis.title.x=element_blank(),
+          axis.title.y=element_blank(),legend.position="none",
+          panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),plot.background=element_blank())
   return(p)
 }
+
+ggplot_peak_image <- function(pks,values,title="")
+{
+  # zplots<-matrix(NA, nrow=max(pks$pos[,1]), ncol=max(pks$pos[,2]))
+  # for( i in 1:nrow(pks$pos))
+  # {
+  #   zplots[pks$pos[ i , 1 ], pks$pos[ i , 2 ]] <- values[i]
+  # }
+  #levelplot(zplots)
+  df=data.frame(x=pks$pos[,2],y=pks$pos[,1],z=values)
+  p=ggplot(df, aes(x, y, fill = z)) + geom_raster() +
+    coord_fixed(1,expand = F) +
+    ggtitle(title) +
+    scale_fill_gradientn(colours=append("#000000FF",rev(rainbow(200,start=5.5/6,end=4.2/6)))) +
+    theme(axis.line=element_blank(),axis.text.x=element_blank(),
+          axis.text.y=element_blank(),axis.ticks=element_blank(),
+          axis.title.x=element_blank(),
+          axis.title.y=element_blank(),legend.position="none",
+          panel.background=element_rect(fill = "#000000FF"),panel.border=element_blank(),panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),plot.background=element_blank())
+  return(p)
+}
+
 #' Specify decimal
 #'
 #' Exports the results to a text file which can be read by mmass for easy interpretation and validation of the results.
@@ -105,3 +138,17 @@ plot_text <- function(text,size=8)
 #'
 #' @return x with k precision
 specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
+
+#RANDOM CHUNCKS OF CODE
+# plot_text <- function(text,size=5)
+# {
+#   p=ggplot() + geom_label()+ annotate("text", x = 0:1, y = c(1,0), size=size, label = c(text,NA), vjust=1,hjust=0) + scale_x_continuous(expand=c(0,10))+ scale_y_continuous(expand=c(0,sqrt(2)*10)) #+ coord_fixed(sqrt(2))#+
+#     # scale_x_continuous(expand=c(0,0)) +
+#     # scale_y_continuous(expand=c(0,0)) #+ theme(axis.line=element_blank(),axis.text.x=element_blank(),
+#   #                                             axis.text.y=element_blank(),axis.ticks=element_blank(),
+#   #                                             axis.title.x=element_blank(),
+#   #                                             axis.title.y=element_blank(),legend.position="none",
+#   #                                             panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
+#   #                                             panel.grid.minor=element_blank(),plot.background=element_blank())
+#   return(p)
+# }
