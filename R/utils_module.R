@@ -122,7 +122,7 @@ ggplot_peak_image <- function(pks,values,title="",isNA=F,chosen=T)
       theme(axis.line=element_blank(),axis.text.x=element_blank(),
             axis.text.y=element_blank(),axis.ticks=element_blank(),
             axis.title.x=element_blank(),
-            axis.title.y=element_blank(),legend.position="none",panel.border=element_blank(),panel.grid.major=element_blank(),
+            axis.title.y=element_blank(),legend.position="none",panel.border=element_blank(),panel.grid.major=element_blank(), plot.title = element_text(size=8),
             panel.grid.minor=element_blank(),plot.background=element_blank())
   }
   else
@@ -141,7 +141,7 @@ ggplot_peak_image <- function(pks,values,title="",isNA=F,chosen=T)
             axis.text.y=element_blank(),axis.ticks=element_blank(),
             axis.title.x=element_blank(),
             axis.title.y=element_blank(),legend.position="none",
-            panel.background=element_rect(fill = "#000000FF"),panel.border=element_blank(),panel.grid.major=element_blank(),
+            panel.background=element_rect(fill = "#000000FF"),panel.border=element_blank(),panel.grid.major=element_blank(), plot.title = element_text(size=8),
             panel.grid.minor=element_blank(),plot.background=background)
   }
   return(p)

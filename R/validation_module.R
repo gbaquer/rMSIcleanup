@@ -20,6 +20,10 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ############################################################################
 
+# HERE
+# semi_raw <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/20160801-BrainCPF-Ag-CPF-proc-proc.tar")
+# rMSI::getImageColsFromMass(semi_raw, 200,20000e-6)
+
 #' Generate gold standard
 #'
 #' Given the matrix formula and the matrix peaks present in the image it returns the ground truth defined as the list of peaks present in the image that correspond to the matrix.
@@ -80,11 +84,13 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
 
   #3.Generate list of possible chemical formulas
   base_forms=NULL
-  for(i in 1:1)
+  for(i in 1:10)
   {
     base_forms=append(base_forms,paste(multiform(matrix_formula,i),adducts_list,sep=""))
   }
 
+  #bIPASS
+  # base_forms=c("Ag9")
   #4. Open pdf report
   if(generate_pdf)
   {
@@ -109,7 +115,7 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
     text=append(text,paste(strwrap(paste("- Number of peaks:",length(pks$mass))),collapse = "\n"))
     text=append(text,paste(strwrap(paste("- Number of pixels:",pks$numPixels[1])),collapse = "\n"))
     text=append(text,paste(strwrap(paste("- Mass Range: [",min(pks$mass),", ", max(pks$mass),"]")),collapse = "\n"))
-    text=append(text,paste(strwrap(paste("- Masses:",paste(pks$mass,collapse="; "))),collapse = "\n"))
+    #text=append(text,paste(strwrap(paste("- Masses:",paste(pks$mass,collapse="; "))),collapse = "\n"))
     text=append(text,"###################################################################")
     text=append(text,"MATRIX INFORMATION")
     text=append(text,paste(strwrap(paste("- Matrix formula:",matrix_formula)),collapse = "\n"))
@@ -147,9 +153,12 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
     for(i in 1:length(patterns))
     {
       max_mass[i]=max(patterns[[i]][,1])
-      patterns_out$mass=append(patterns_out$mass,patterns[[i]][,1])
-      patterns_out$intensity=append(patterns_out$intensity,patterns[[i]][,2])
-      patterns_out$cluster=append(patterns_out$cluster,rep(attributes(patterns)$names[i],length(patterns[[i]][,1])))
+      if(!is.element(attributes(patterns)$names[i],patterns_out$cluster))
+      {
+        patterns_out$mass=append(patterns_out$mass,patterns[[i]][,1])
+        patterns_out$intensity=append(patterns_out$intensity,patterns[[i]][,2])
+        patterns_out$cluster=append(patterns_out$cluster,rep(attributes(patterns)$names[i],length(patterns[[i]][,1])))
+      }
     }
     clus_num=clus_num+1
   }
@@ -177,7 +186,7 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
       image_mass=pks$mass[image_index]
       image_intensity=mean_image[image_index]
 
-      rel_error=abs(image_mass-cluster_mass)/image_mass
+      rel_error=abs(image_mass-cluster_mass)/cluster_mass
       image_intensity[which(rel_error>tol)]=0
 
       correl=cor(cluster_intensity,image_intensity)
@@ -189,9 +198,13 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
       correlations=append(correlations,correl)
 
 
-      image_correl_matrix=cor(pks$intensity[,image_index])
-      image_correl = round(apply(image_correl_matrix,2,mean),digits = 2)
-      image_correl_labels = append(rep("",length(image_correl)),image_correl)
+      cluster_images=pks$intensity[,image_index]
+      cluster_images[,which(rel_error>tol)]=NA
+
+      image_correl_matrix=cor(cluster_images)
+      image_correl_matrix[which(is.na(image_correl_matrix))]=0
+      image_correl = apply(image_correl_matrix,2,weighted.mean,w=cluster_intensity)
+      image_correl_labels = append(rep("",length(image_correl)),round(image_correl,2))
 
       chosen=rep(F,length(image_mass))
       if(!is.na(correl))
@@ -221,24 +234,45 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
         value=NULL
         variable=NULL
         mass=NULL
-        # plot1= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point() + geom_text(aes(label=image_correl))
-        # plot1=plot1 + ggtitle(paste(c,correl)) + xlab("m/z") + ylab("Rel Intensity")
-        # print(grid.arrange(plot1,plot1,plot1,plot1,layout_matrix=page_layout))
+
+        s1=correl
+        image_correl[which(is.na(image_correl))]=0
+        s2=weighted.mean(image_correl,cluster_intensity)
 
         plt_correl= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point() + geom_text(aes(label=image_correl_labels,vjust=0))
-        plt_correl=plt_correl + ggtitle(paste(c,round(correl,2),round(mean(image_correl),2))) + xlab("m/z") + ylab("Rel Intensity")
-        plt_example=plt_correl
+        plt_correl= plt_correl + ggtitle(paste(c,"; S1:",round(s1,2),"; S2:",round(s2,2))) + xlab("m/z") + ylab("Normalized Intensity") +scale_colour_discrete(name="",breaks=c("cluster_intensity","image_intensity"),labels=c("Calculated m/z","Experimental m/z"))+ theme(legend.position="bottom")
+
         text=paste(apply(round(image_correl_matrix,2),1,paste,collapse=" "),collapse="\n")
         plt_text=plot_text(text)
-        plt_text=levelplot(image_correl_matrix)
+        plt_text=levelplot(image_correl_matrix,at=seq(-1,1,length.out = 100))
         plts=list(plt_correl,plt_text)
 
+        page_layout=rbind(c(1,1,2,2),
+                          c(1,1,2,2),
+                          c(3,4,5,6),
+                          c(7,8,9,10),
+                          c(11,12,13,14),
+                          c(15,16,17,18))
+        offset=match(3,c(t(page_layout)))-1
         for(i in 1:length(image_index))
-          plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,image_index[i]],paste("m/z",cluster_mass[i]),is.na(image_intensity[i]),chosen[i])))
+        {
+          # print(pks$intensity[,image_index[i]])
+          # print(paste("m/z",round(cluster_mass[i],4)," +/-",round(rel_error[i]*1e6),"ppm"))
+          # print(is.na(image_intensity[i]))
+          # print(chosen[i])
+          plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,image_index[i]],paste("m/z",round(cluster_mass[i],4)," +/-",round(rel_error[i]*1e6),"ppm"),is.na(image_intensity[i]),chosen[i])))
+          if((i+offset)%%length(page_layout)==0||i==length(image_index))
+          {
+            grid.arrange(grobs=plts,layout_matrix=page_layout)
+            plts=list()
+            offset=0
+            page_layout=matrix(1:length(page_layout), ncol = 4)
+          }
+        }
 
         #Generate images
         #for(i in 1:length)
-        grid.arrange(grobs=plts,layout_matrix=page_layout)
+        #grid.arrange(grobs=plts,layout_matrix=page_layout)
 
         #grid.arrange(plot(cluster_mass,cluster_intensity),plot(image_mass,image_intensity))
         print("---")
@@ -253,29 +287,29 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
   # Close file
   if(generate_pdf)
   {
-    plts=list()
-    gt_index=match(gt,pks$mass)
-    for(i in 1:length(gt))
-    {
-      plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,gt_index[i]],paste("m/z",gt[i]),chosen=T)))
-      if(i%%length(page_layout)==0||i==length(gt))
-      {
-        grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
-        plts=list()
-      }
-    }
-
-    plts=list()
-    neg_gt_index=match(neg_gt,pks$mass)
-    for(i in 1:length(neg_gt))
-    {
-      plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,neg_gt_index[i]],paste("m/z",neg_gt[i]),chosen=F)))
-      if(i%%length(page_layout)==0||i==length(neg_gt))
-      {
-        grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
-        plts=list()
-      }
-    }
+    # plts=list()
+    # gt_index=match(gt,pks$mass)
+    # for(i in 1:length(gt))
+    # {
+    #   plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,gt_index[i]],paste("m/z",gt[i]),chosen=T)))
+    #   if(i%%length(page_layout)==0||i==length(gt))
+    #   {
+    #     grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
+    #     plts=list()
+    #   }
+    # }
+    #
+    # plts=list()
+    # neg_gt_index=match(neg_gt,pks$mass)
+    # for(i in 1:length(neg_gt))
+    # {
+    #   plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,neg_gt_index[i]],paste("m/z",neg_gt[i]),chosen=F)))
+    #   if(i%%length(page_layout)==0||i==length(neg_gt))
+    #   {
+    #     grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
+    #     plts=list()
+    #   }
+    # }
 
     dev.off()
   }
