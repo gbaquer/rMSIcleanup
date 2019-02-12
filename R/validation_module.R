@@ -68,7 +68,7 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
   #1. Determine adducts depending on matrix_formula
   adducts_list=c("")
   #if(matrix_formula=="Ag1")
-  #adducts_list=c("","Cl1","N1O3")
+  adducts_list=c("","Cl1","N1O3")
   #For more complex matrix formulas adducts could be loaded from the library
   #adducts_formula=adducts$Formula_add[1:4]
 
@@ -102,6 +102,7 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
     pdf(pdf_file,paper='a4',width=a4_width,height=a4_height)
     #First page of metadata [File name, mean image, matrix formula, adducts list, base forms, cor_threshold]
     text=NULL
+    text=append(text,Sys.time())
     text=append(text,"###################################################################")
     text=append(text,"IMAGE INFORMATION")
     text=append(text,paste(strwrap(paste("- File_name:",pks$names[1])),collapse = "\n"))
