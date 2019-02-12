@@ -107,7 +107,7 @@ plot_text <- function(text,size=3)
   return(p)
 }
 
-ggplot_peak_image <- function(pks,values,title="")
+ggplot_peak_image <- function(pks,values,title="",isNA=F,chosen=T)
 {
   # zplots<-matrix(NA, nrow=max(pks$pos[,1]), ncol=max(pks$pos[,2]))
   # for( i in 1:nrow(pks$pos))
@@ -115,17 +115,35 @@ ggplot_peak_image <- function(pks,values,title="")
   #   zplots[pks$pos[ i , 1 ], pks$pos[ i , 2 ]] <- values[i]
   # }
   #levelplot(zplots)
-  df=data.frame(x=pks$pos[,2],y=pks$pos[,1],z=values)
-  p=ggplot(df, aes(x, y, fill = z)) + geom_raster() +
-    coord_fixed(1,expand = F) +
-    ggtitle(title) +
-    scale_fill_gradientn(colours=append("#000000FF",rev(rainbow(200,start=5.5/6,end=4.2/6)))) +
-    theme(axis.line=element_blank(),axis.text.x=element_blank(),
-          axis.text.y=element_blank(),axis.ticks=element_blank(),
-          axis.title.x=element_blank(),
-          axis.title.y=element_blank(),legend.position="none",
-          panel.background=element_rect(fill = "#000000FF"),panel.border=element_blank(),panel.grid.major=element_blank(),
-          panel.grid.minor=element_blank(),plot.background=element_blank())
+  if(isNA)
+  {
+    p=ggplot() + geom_label()+ annotate("text", x = 0, y = 0, size=5, label = "NA") +
+      ggtitle(title) +
+      theme(axis.line=element_blank(),axis.text.x=element_blank(),
+            axis.text.y=element_blank(),axis.ticks=element_blank(),
+            axis.title.x=element_blank(),
+            axis.title.y=element_blank(),legend.position="none",panel.border=element_blank(),panel.grid.major=element_blank(),
+            panel.grid.minor=element_blank(),plot.background=element_blank())
+  }
+  else
+  {
+    if(chosen)
+      background=element_rect(fill = "#45F442FF")
+    else
+      background=element_blank()
+
+    df=data.frame(x=pks$pos[,2],y=pks$pos[,1],z=values)
+    p=ggplot(df, aes(x, y, fill = z)) + geom_raster() +
+      coord_fixed(1,expand = F) +
+      ggtitle(title) +
+      scale_fill_gradientn(colours=append("#000000FF",rev(rainbow(200,start=5.5/6,end=4.2/6)))) +
+      theme(axis.line=element_blank(),axis.text.x=element_blank(),
+            axis.text.y=element_blank(),axis.ticks=element_blank(),
+            axis.title.x=element_blank(),
+            axis.title.y=element_blank(),legend.position="none",
+            panel.background=element_rect(fill = "#000000FF"),panel.border=element_blank(),panel.grid.major=element_blank(),
+            panel.grid.minor=element_blank(),plot.background=background)
+  }
   return(p)
 }
 

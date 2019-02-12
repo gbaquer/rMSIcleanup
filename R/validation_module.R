@@ -102,7 +102,7 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
     pdf(pdf_file,paper='a4',width=a4_width,height=a4_height)
     #First page of metadata [File name, mean image, matrix formula, adducts list, base forms, cor_threshold]
     text=NULL
-    text=append(text,Sys.time())
+    text=append(text,as.character(Sys.time()))
     text=append(text,"###################################################################")
     text=append(text,"IMAGE INFORMATION")
     text=append(text,paste(strwrap(paste("- File_name:",pks$names[1])),collapse = "\n"))
@@ -184,6 +184,8 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
       if(length(cluster_index)==1)
         correl=1
 
+      image_intensity[which(rel_error>tol)]=NA
+
       correlations=append(correlations,correl)
 
 
@@ -191,13 +193,14 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
       image_correl = round(apply(image_correl_matrix,2,mean),digits = 2)
       image_correl_labels = append(rep("",length(image_correl)),image_correl)
 
-
+      chosen=rep(F,length(image_mass))
       if(!is.na(correl))
       {
         #[Include a metric that checks for correlation of the image]
         if(correl>cor_threshold)
         {
-          new_gt=image_mass[which(apply(abs(outer(cluster_mass,image_mass,'-')),2,min)/image_mass<tol)]
+          chosen=apply(abs(outer(cluster_mass,image_mass,'-')),2,min)/image_mass<tol
+          new_gt=image_mass[which(chosen)]
           print(new_gt)
           gt=append(gt,new_gt)
         }
@@ -205,8 +208,9 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
       #Print
       if(pkg_opt()$verbose_level<=-1 || generate_pdf)
       {
-        if(max(image_intensity)!=0)
-          image_intensity=image_intensity/max(image_intensity)
+        intensities=image_intensity[which(!is.na(image_intensity))]
+        if(length(intensities)!=0 && max(intensities)!=0)
+          image_intensity=image_intensity/max(intensities)
         if(max(cluster_intensity)!=0)
           cluster_intensity=cluster_intensity/max(cluster_intensity)
 
@@ -221,16 +225,16 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
         # plot1=plot1 + ggtitle(paste(c,correl)) + xlab("m/z") + ylab("Rel Intensity")
         # print(grid.arrange(plot1,plot1,plot1,plot1,layout_matrix=page_layout))
 
-        plt_correl= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point() + geom_text(aes(label=image_correl_labels))
+        plt_correl= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) + geom_linerange() + geom_point() + geom_text(aes(label=image_correl_labels,vjust=0))
         plt_correl=plt_correl + ggtitle(paste(c,round(correl,2),round(mean(image_correl),2))) + xlab("m/z") + ylab("Rel Intensity")
         plt_example=plt_correl
         text=paste(apply(round(image_correl_matrix,2),1,paste,collapse=" "),collapse="\n")
         plt_text=plot_text(text)
         plt_text=levelplot(image_correl_matrix)
         plts=list(plt_correl,plt_text)
-        for(i in image_index)
-          plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,i],paste("m/z",pks$mass[i]))))
 
+        for(i in 1:length(image_index))
+          plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,image_index[i]],paste("m/z",cluster_mass[i]),is.na(image_intensity[i]),chosen[i])))
 
         #Generate images
         #for(i in 1:length)
@@ -242,16 +246,40 @@ generate_gt <- function (matrix_formula,pks,matching_method="strict",cor_thresho
     }
   }
 
-
+  gt=unique(gt)
+  neg_gt=setdiff(pks$mass,gt)
   #Each page
 
   # Close file
   if(generate_pdf)
   {
+    plts=list()
+    gt_index=match(gt,pks$mass)
+    for(i in 1:length(gt))
+    {
+      plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,gt_index[i]],paste("m/z",gt[i]),chosen=T)))
+      if(i%%length(page_layout)==0||i==length(gt))
+      {
+        grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
+        plts=list()
+      }
+    }
+
+    plts=list()
+    neg_gt_index=match(neg_gt,pks$mass)
+    for(i in 1:length(neg_gt))
+    {
+      plts=c(plts,list(ggplot_peak_image(pks,pks$intensity[,neg_gt_index[i]],paste("m/z",neg_gt[i]),chosen=F)))
+      if(i%%length(page_layout)==0||i==length(neg_gt))
+      {
+        grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
+        plts=list()
+      }
+    }
+
     dev.off()
   }
-
-  return(unique(gt))
+  return(gt)
 }
 
 
