@@ -107,7 +107,7 @@ plot_text <- function(text,size=3)
   return(p)
 }
 
-ggplot_peak_image <- function(pks,values,title="",isNA=F,chosen=T)
+ggplot_peak_image <- function(pks,values=NA,title="",isNA=F,chosen=T,in_pksMat=T)
 {
   # zplots<-matrix(NA, nrow=max(pks$pos[,1]), ncol=max(pks$pos[,2]))
   # for( i in 1:nrow(pks$pos))
@@ -127,10 +127,13 @@ ggplot_peak_image <- function(pks,values,title="",isNA=F,chosen=T)
   }
   else
   {
-    if(chosen)
-      background=element_rect(fill = "#45F442FF")
+    if(in_pksMat)
+      if(chosen)
+        background=element_rect(fill = "#45F442FF")
+      else
+        background=element_rect(fill = "#F46242FF")
     else
-      background=element_blank()
+      background=element_rect(fill = "#918A88FF")
 
     df=data.frame(x=pks$pos[,2],y=pks$pos[,1],z=values)
     p=ggplot(df, aes(x, y, fill = z)) + geom_raster() +
