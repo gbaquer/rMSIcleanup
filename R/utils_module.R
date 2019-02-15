@@ -160,6 +160,86 @@ ggplot_peak_image <- function(pks,values=NA,title="",isNA=F,chosen=T,in_pksMat=T
 #' @return x with k precision
 specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
 
+#' Find First GT
+#'
+#' Returns the index of the first element in x greater than k
+#'
+#' @param x Input vector
+#' @param k Threshold
+#'
+#' @return x with k precision
+find_first_gt <- function(x,k) if(k>=max(x)) length(x) else match(T,x>k)
+
+#' Find First LT
+#'
+#' Returns the index of the first element in x lower than k
+#'
+#' @param x Input vector
+#' @param k Threshold
+#'
+#' @return x with k precision
+find_first_lt <- function(x,k) match(T,x<k)
+
+
+
+#' Generate report spectral clustering
+#'
+#' Generates a pdf report with the results of a spectral clustering
+#'
+#' @param pks Input Peak Matrix
+#' @param mass_range Vector containing the minimum and maximum masses to be used in the process. The default is the complete mass range.
+#' @param num_clus Number of clusters to use. Defaults to 3.
+#' @param f Function to use when plotting the resulting spectral clusters in the spatial domain. The function should take a numerical vector and return a single number. Default is mean
+#'
+#' @return Matrix containing the masses processed along with the cluster to which each of them is assigned
+#'
+#' @export
+
+spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), num_clus=3, f=mean)
+{
+  # Normalize
+  pks$intensity <- pks$intensity/pks$normalizations$TIC
+  # Prune masses
+  cols=find_first_gt(pks$mass,mass_range[1]):find_first_gt(pks$mass,mass_range[2])
+  pks$intensity<-pks$intensity[,cols]
+  pks$mass<-pks$mass[cols]
+
+  # PCA of spectral correlation
+  pca <- prcomp(cor(pks$intensity))
+  # Clustering
+  clus <- kmeans(pca$x, centers = num_clus,iter.max = 100)
+  labels = paste("Cluster",1:length(clus$size))
+
+  # Plot PC1 vs. PC2
+  pca_plot <- plot(pca$x[,c(1,2)],
+                   col=clus$cluster,
+                   xlab=paste("PC1",round(100*pca$sdev[1]/sum(pca$sdev),2),"%"),
+                   ylab=paste("PC2",round(100*pca$sdev[2]/sum(pca$sdev)),"%"))
+  legend("bottomright", legend=labels,
+         col=1:length(clus$size), lty=c(1,1), cex=0.8, lwd=2)
+
+
+  # Plot spectral clustering results
+  mean_spectra=apply(pks$intensity,2,mean)
+  plot(pks$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
+  legend("bottomright", legend=labels,
+         col=1:length(clus$size), lty=c(1,1), cex=0.8, lwd=2)
+
+  # Plot cluster images
+  # Transform the spectral images of each cluster into a single spectral image to be plotted
+  for(i in 1:length(clus$withins))
+  {
+    image=apply(pks$intensity[,which(clus$cluster==i)],1,f)
+    rMSIproc::plotValuesImage( peakMatrix = pks, values = image,labels = labels[i])
+  }
+  return(list(mass=pks$mass,cluster=clus$cluster))
+}
+
+
+
+
+
+
 #RANDOM CHUNCKS OF CODE
 # plot_text <- function(text,size=5)
 # {
