@@ -48,6 +48,12 @@ pkg_opt= set_opt(
                      .validate= function(x) is.numeric(x) && x%%1==0 && x>=-3 && x<=1,
                      .failed_msg = "Verbose should be an integer in the range [-3,1]",
                      .description = "Verbose level determining which level of information is printed or plotted"
+  ),
+  round_digits=list(.value=4,
+                     .read.only=FALSE,
+                     .validate= function(x) is.numeric(x) && x%%1==0 && x>=0,
+                     .failed_msg = "Round digits should be a positive integer",
+                     .description = "Number of digits to be used in all the printing functions"
   )
 )
 
@@ -237,8 +243,135 @@ spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), 
 
 
 
+#PDF FILE PRINTING UTILS
+
+#' Generate File Name
+#'
+#' Generates a file name that has not yet been used
+#'
+#' @param base_name Base name including
+#' @param extension File extension. Defaults to ".pdf"
+#' @param folder Name of the folder in which to store the file. Defaults to "output/"
+#'
+#' @return File name that is not used in the
+#'
+#' @export
+
+generate_file_name <- function(base_name, extension=".pdf",folder="output/")
+{
+  file_name=paste(folder,base_name,"_000",extension,sep="")
+  i=0
+  while(file.exists(file_name))
+  {
+    i=i+1
+    file_name=paste(folder,base_name,"_",str_pad(i, 3, pad = "0"),extension,sep="")
+  }
+  return(file_name)
+}
+
+#' Add entry
+#'
+#' Adds an entry to a string of text to be witten to pdf
+#'
+#' @param text Starting text string
+#' @param ... Contents of the new entry. They will be pasted together with a space. Any vectors will be separated with a semicolon. Any # will be replaced by a division line
+#'
+#' @return Updated text variable with the new entry
+#'
+#' @export
+
+add_entry <- function(text,...)
+{
+  arguments <- list(...)
+  # Change division line
+  are_division=which(arguments=="#")
+  arguments[are_division]=paste(rep("#",80),collapse="")
+  # Convert vectors to strings
+  are_vectors=which(lapply(arguments,length)>1)
+  arguments[are_vectors]=lapply(arguments[are_vectors],function(x)paste(x,collapse="; "))
+  #Append new entry
+  text=paste(text,paste(strwrap(paste(arguments,collapse=" ")),collapse = "\n"),"\n",collapse="")
+  return(text)
+}
+
+#' Get one peak matrix
+#'
+#' Returns the peak matrix in pks corresponding to the ith image
+#'
+#' @param pks Peak Matrix
+#' @param i Index of the peak matrix to be retieved
+#'
+#' @return Peak matrix containing only the first image from pks
+#'
+#' @export
+get_one_peakMatrix <- function(pks,i=1)
+{
+  if(length(pks$numPixels)>1)
+  {
+    rows=1:pks$numPixels[i]
+    if(i>1&i<=length(pks$numPixels))
+      rows=rows+sum(pks$numPixels[1:i-1])
+
+    for(attr in attributes(pks)$names)
+    {
+      if(is.null(dim(pks[[attr]])))
+      {
+        if(attr!="mass")
+        {
+          pks[[attr]]=pks[[attr]][i]
+        }
+      }
+      else
+      {
+        pks[[attr]]=pks[[attr]][rows,]
+      }
+    }
+  }
+  return(pks)
+}
+
+#' Get closest peak
+#'
+#' Returns the indices of "experimental_masses" that are the closest to each element in "calc_masses"
+#'
+#' @param calc_masses Vector with calculated masses
+#' @param experimental_masses Vector with experimental masses
+#'
+#' @return Peak matrix containing only the first image from pks
+#'
+#' @export
+get_closest_peak <- function(calc_masses,experimental_masses)
+  apply(abs(outer(calc_masses,experimental_masses,'-')),1,function(x) sort(x,index.return=TRUE)$ix[1])
 
 
+#' Quiet
+#'
+#' Forces a function to execute without printing any messages
+#'
+#' @param x Call to function
+#'
+quiet <- function(x) {
+  sink(tempfile())
+  on.exit(sink())
+  invisible(force(x))
+}
+#' Quiet
+#'
+#' Forces a function to execute without printing any messages
+#'
+#' @param experimental_mass Experimental mass
+#' @param calculated_mass Calculated mass
+#' @param full_spectrum_masses Full spectrum mass vector
+#' @param tol_scans Tolerance specified in scans
+#'
+#' @return Boolean value indicating whether the experimental mass is within "tol_scans" of the calculated_mass
+is_within_scan_tol <- function(experimental_mass,calculated_mass,full_spectrum_masses,tol_scans)
+{
+  i=which.min(abs(full_spectrum_masses-calculated_mass))
+  cols=(i-tol_scans):(i+tol_scans)
+  mass_range=full_spectrum_masses[cols]
+  return((experimental_mass>min(mass_range))&(experimental_mass<max(mass_range)))
+}
 
 #RANDOM CHUNCKS OF CODE
 # plot_text <- function(text,size=5)
@@ -253,3 +386,48 @@ spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), 
 #   #                                             panel.grid.minor=element_blank(),plot.background=element_blank())
 #   return(p)
 # }
+
+#FROM GENERATE GROUND TRUTH
+
+#Select one cluster
+# clus <- kmeans(pks[[mag_of_interest]], centers = 3)
+# sorted_clusters=sort(clus$size,index.return=TRUE,decreasing = TRUE)$ix
+#
+# rows=which(clus$cluster==sorted_clusters[clus_num])
+# for(attr in attributes(pks)$names)
+# {
+#   if(is.null(dim(pks[[attr]])))
+#   {
+#     if(attr!="mass")
+#     {
+#       pks[[attr]]=pks[[attr]][1]
+#     }
+#   }
+#   else
+#   {
+#     pks[[attr]]=pks[[attr]][rows,]
+#   }
+# }
+
+# #First page of metadata [File name, mean image, matrix formula, adducts list, base forms, cor_threshold]
+# text=NULL
+# text=append(text,as.character(Sys.time()))
+# text=append(text,"###################################################################")
+# text=append(text,"IMAGE INFORMATION")
+# text=append(text,paste(strwrap(paste("- File_name:",pks$names[1])),collapse = "\n"))
+# text=append(text,paste(strwrap(paste("- Number of peaks:",length(pks$mass))),collapse = "\n"))
+# text=append(text,paste(strwrap(paste("- Number of pixels:",pks$numPixels[1])),collapse = "\n"))
+# text=append(text,paste(strwrap(paste("- Mass Range: [",min(pks$mass),", ", max(pks$mass),"]")),collapse = "\n"))
+# #text=append(text,paste(strwrap(paste("- Masses:",paste(pks$mass,collapse="; "))),collapse = "\n"))
+# text=append(text,"###################################################################")
+# text=append(text,"MATRIX INFORMATION")
+# text=append(text,paste(strwrap(paste("- Matrix formula:",matrix_formula)),collapse = "\n"))
+# text=append(text,paste(strwrap(paste("- Adducts list:",paste(adducts_list,collapse="; "))),collapse = "\n"))
+# text=append(text,paste(strwrap(paste("- Base forms:",paste(base_forms,collapse="; "))),collapse = "\n"))
+# text=append(text,paste(strwrap(paste("- Correlation threshold:",cor_threshold)),collapse = "\n"))
+# text=append(text,"###################################################################")
+#
+# text=paste(text,collapse = "\n")
+
+# MALDI_resolution=cbind(c(1040.189125,1295.508274,1342.789598,1607.565012,2089.834515,2468.085106,3148.93617,4548.463357),c(26012.14575,34514.17004,36437.24696,41497.97571,44939.27126,44534.41296,42510.12146,37044.53441))
+# dimnames(MALDI_resolution)[[2]]=c("m/z","R")

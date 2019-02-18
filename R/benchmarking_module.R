@@ -37,6 +37,9 @@ cross_validation <- function () {
   pks_HCCA <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Lluc Images/postcode2/region7_calibrated/mergeddata-peaks.zip")
   pks_Garlic <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Garlic Alex/mergeddata-peaks.zip")
 
+  #LOAD Full spectra
+  full_spectrum_Ag <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-CPF-proc.tar")
+
   #LOAD Ag ANNOTATIONS
   annotations_Ag=read.table("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/Ag.ref")
 
