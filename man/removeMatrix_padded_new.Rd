@@ -5,18 +5,20 @@
 \title{Remove Matrix Padded New}
 \usage{
 removeMatrix_padded_new(pks, normalize = TRUE, matrix_cor = 0.65,
-  tissue_cor = 0.62, exo_method = 1, max_exo = 10)
+  tissue_cor = 0.6, exo_method = 1, max_exo = 10)
 }
 \arguments{
 \item{pks}{Peak Matrix}
 
 \item{normalize}{Boolean value to determine if normalization is to be performed. If TRUE TIC normalization is performed}
 
+\item{matrix_cor}{Correlation threshold over which a given peak is considered to be a matrix peak}
+
+\item{tissue_cor}{Correlation threshold under which a given peak is considered to be a tissue peak}
+
 \item{exo_method}{Method to determine the reference matrix peaks}
 
 \item{max_exo}{Number of peaks used as base for the correlation}
-
-\item{cor_threshold}{Correlation threshold over which a given peak is considered to be a matrix peak}
 }
 \value{
 List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.

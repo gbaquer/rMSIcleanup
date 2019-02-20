@@ -28,9 +28,10 @@
 #'
 #' @param pks Peak Matrix
 #' @param normalize Boolean value to determine if normalization is to be performed. If TRUE TIC normalization is performed
-#' @param cor_threshold Correlation threshold over which a given peak is considered to be a matrix peak
-#' @param max_exo Number of peaks used as base for the correlation
+#' @param matrix_cor Correlation threshold over which a given peak is considered to be a matrix peak
+#' @param tissue_cor Correlation threshold under which a given peak is considered to be a tissue peak
 #' @param exo_method Method to determine the reference matrix peaks
+#' @param max_exo Number of peaks used as base for the correlation
 #'
 #' @return List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
 #'

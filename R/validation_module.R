@@ -27,14 +27,26 @@
 #' Given the matrix formula and the matrix peaks present in the image it returns the ground truth defined as the list of peaks present in the image that correspond to the matrix.
 #'
 #' @param matrix_formula String giving the chemical formula of the matrix in the enviPat notation
-#' @param pks Peak Matrix Image
-#' @param matching_method "loose": All peaks within a given tolerance are considered matrix peaks; "strict": Only peaks within a given tolerance that mantain the abundance ratios for each cluster are considered matrix peaks
-#' @param s1_threshold Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present and thus included in the gold truth (gt)
-#' @param generate_pdf Boolean indicating whether to generate a pdf or not
+#' @param pks Peak Matrix Image produced using rMSIproc
+#' @param full_spectrum Full spectrum before performing peak picking. It is used to give a higher degree of confidence to the S1 and S2 computation.
+#' @param s1_threshold Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present
+#' @param s2_threshold Correlation between the spatial images of the peak in a cluster above which the peaks are included in the gold truth (gt)
+#' @param MALDI_resolution MALDI resolution that is used to merge nearby peaks in-silico as the equipment would in real life
+#' @param tol_mode String determining the tolerance mode to be used when comparing the calculated masses with the experimental ones. "ppm": relative tolerance with respect to the calculated one in parts per million. "scans": Number of scans or datapoints present in the full spectrum -It is only applicable if full_spectrum is provided.
+#' @param tol_ppm Tolerance in parts per million. Only used if tol_mode="ppm".
+#' @param tol_scans Tolerance in number of scans. Only used if tol_mode="scans".
+#' @param mag_of_interest Magnitude of interest to use when performing the study. It can be "intensity" or "area".
+#' @param normalization String indicating the normalization technique to use. Possible values: "None", "TIC","RMS", "MAX" or "AcqTic"
+#' @param max_multi Maximum Cluster Multiplication. For each adduct -Adduct- it will generate a set of base formulas as follows: M+Adduct, 2M+Adduct, 3M+Adduct ... max_multi*M + Adduct
+#' @param add_list List of adducts to be added to the matrix formula in the format defined by enviPat. Example: c("H1","Na1","K1")
+#' @param sub_list List of compounds to be substracted to the matrix formula in the format defined by enviPat. Example: c("H1",H2O1")
+#' @param generate_pdf Boolean indicating whether to generate a pdf report or not
+#' @param default_page_layout Page layout to be used in the pdf plotting.
+#'
 #' @return Ground Truth: List of masses available in the image that correspond to the matrix.
 #'
 #' @export
-generate_gt <- function (matrix_formula,pks,full_spectrum,
+generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
                          s1_threshold=0.85,s2_threshold=0.85,
                          MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                          mag_of_interest="intensity",normalization="None",
@@ -42,7 +54,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
                          generate_pdf=F,default_page_layout=NULL) {
   #SECTION -1 :: Input validation
   #Adjust tolerance to ppm if no full_spectrum is provided
-  if(is.na(full_spectrum))
+  if(is.null(full_spectrum))
     tol_mode="ppm"
   #Page layout
   if(is.null(default_page_layout))
@@ -102,10 +114,17 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
 
     #First page of metadata [File name, mean image, matrix formula, adducts list, base forms, S1_threshold]
     text=""
-    text=add_entry(text,as.character(Sys.time()))
+    text=add_entry(text,"#")
+    text=add_entry(text,"- Package Version:",packageVersion("rMSIcleanup"))
+    text=add_entry(text,"- Time:",as.character(Sys.time()))
     text=add_entry(text,"#")
     text=add_entry(text,"IMAGE INFORMATION")
-    text=add_entry(text,"- File_name:",pks$names[1])
+    text=add_entry(text,"- Peak matrix:",pks$names[1])
+    if(is.null(full_spectrum))
+      text=add_entry(text,"- Full spectrum: [NOT PROVIDED]")
+    else
+      text=add_entry(text,"- Full spectrum:",full_spectrum$names[1])
+
     text=add_entry(text,"- Number of peaks:",length(pks$mass))
     text=add_entry(text,"- Number of pixels:",pks$numPixels[1])
     text=add_entry(text,"- Mass Range: [",min(pks$mass),", ", max(pks$mass),"]")
@@ -114,9 +133,19 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
     text=add_entry(text,"- Matrix formula:",matrix_formula)
     text=add_entry(text,"- Add list:",add_list)
     text=add_entry(text,"- Substract list:",sub_list)
+    text=add_entry(text,"- Maximum cluster multiplication:",max_multi)
     text=add_entry(text,"- Base forms:",base_forms)
+    text=add_entry(text,"#")
+    text=add_entry(text,"PROCESSING INFORMATION")
     text=add_entry(text,"- S1 threshold:",s1_threshold)
     text=add_entry(text,"- S2 threshold:",s2_threshold)
+    text=add_entry(text,"- S2 threshold:",s2_threshold)
+    text=add_entry(text,"- Magnitude of interest:",mag_of_interest)
+    text=add_entry(text,"- Tolerance mode:",tol_mode)
+    if(tol_mode=="ppm")
+      text=add_entry(text,"- Tolerance ppm:",tol_ppm)
+    else
+      text=add_entry(text,"- Tolerance scans:",tol_scans)
     text=add_entry(text,"#")
 
     text=paste(text,collapse = "\n")
@@ -162,14 +191,29 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
     multiplier=multiplier+1
   }
   #5. Determine matches with masses
-  gt=NULL
   mean_image=apply(pks[[mag_of_interest]],2,mean)
   clusters=unique(patterns_out$cluster)
-  s1_scores=NULL
-  s2_scores=NULL
+
+  #Initialize output results list
+  num_pattern_elements=length(patterns_out$mass)
+
+  patterns_out$experimental_mass=rep(NA,num_pattern_elements)
+  patterns_out$s1_scores=rep(NA,num_pattern_elements)
+  patterns_out$s2_scores=rep(NA,num_pattern_elements)
+  patterns_out$present=rep(F,num_pattern_elements)
+
+  num_peaks_in_matrix = length(pks$mass)
+
+  results=list(
+    s1_scores=rep(NA,num_peaks_in_matrix),
+    s2_scores=rep(NA,num_peaks_in_matrix),
+    cluster_names=rep(NA,num_peaks_in_matrix),
+    gt=rep(F,num_peaks_in_matrix),
+    count=rep(0,num_peaks_in_matrix),
+    patterns_out=patterns_out)
   for(cluster in clusters)
   {
-    #Calculated cluster
+    # Calculated cluster
     calculated_index=which(patterns_out$cluster==cluster)
     calculated_mass=patterns_out$mass[calculated_index]
     calculated_magnitude=patterns_out[[mag_of_interest]][calculated_index]
@@ -178,6 +222,9 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
     experimental_index=get_closest_peak(calculated_mass,pks$mass)
     experimental_mass=pks$mass[experimental_index]
     experimental_magnitude=mean_image[experimental_index]
+
+    # Number of peaks in cluster
+    num_peaks=length(calculated_index)
 
     #Determine mass relative error
     if(tol_mode=="ppm")
@@ -189,18 +236,17 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
     else
     {
       rel_error=abs(experimental_mass-calculated_mass)/calculated_mass
-      indices=1:length(experimental_mass)
-      index_pks=which(unlist(lapply(indices,function(i)is_within_scan_tol(experimental_mass[i],calculated_mass[i],full_spectrum$mass,tol_scans))))#Peaks to be taken from the peak matrix
-      index_full_spectrum=setdiff(indices,index_pks) #Peaks to be taken from the full spectrum
+      index_pks=which(unlist(lapply(1:num_peaks,function(i)is_within_scan_tol(experimental_mass[i],calculated_mass[i],full_spectrum$mass,tol_scans))))#Peaks to be taken from the peak matrix
+      index_full_spectrum=setdiff(1:num_peaks,index_pks) #Peaks to be taken from the full spectrum
     }
 
     #Generate images for each peak in the cluster
     final_image=NULL
-    for(i in 1:length(calculated_index))
+    for(i in 1:num_peaks)
     {
       if(is.element(i,index_full_spectrum))
       {
-        if(!is.na(full_spectrum))
+        if(!is.null(full_spectrum))
         {
           #Get image from full_spectrum (Processed spectrum before peak picking)
           mass=calculated_mass[i]
@@ -237,19 +283,15 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
 
     #Compute S1
     s1=cor(calculated_magnitude,experimental_magnitude)
-    if(length(calculated_index)==1)
+    if(num_peaks==1)
       s1=1
 
-    s1_scores=append(s1_scores,s1)
-
-    #Compute S2
+    #Compute S2 using all peaks
     image_correl=cor(final_image)
     image_correl[which(is.na(image_correl))]=0
     s2_individual = apply(image_correl,2,weighted.mean,w=calculated_magnitude)
     s2_individual[which(is.na(s2_individual))]=0
-    s2=weighted.mean(s2_individual,calculated_magnitude)
-
-    s2_scores=append(s2_scores,s2)
+    s2_all=weighted.mean(s2_individual,calculated_magnitude)
 
     #Compute S2 using only the peak matrix
     if(length(index_pks)>1)
@@ -261,31 +303,54 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
     else
       s2_pks=NA
 
-    #Choose which peaks belong in the ground truth (gt)
-    chosen=rep(F,length(experimental_mass))
-    if(!is.na(s1)&!(is.na(s2)&is.na(s2_pks)))
-    {
-      if(s1>s1_threshold & max(s2,s2_pks,na.rm=T)>s2_threshold)
-      {
-        chosen[index_pks]=T
-        new_gt=experimental_mass[index_pks]
-        gt=append(gt,new_gt)
-      }
-    }
+    #Compute S2
+    s2=max(s2_all,s2_pks,na.rm=T)
 
-    #Adjust magnitude in the NA mode
-    if(is.na(full_spectrum))
+
+    #Choose which peaks belong in the ground truth (gt)
+
+    # chosen=rep(F,num_peaks)
+    # if(!is.na(s1)&!is.na(s2))
+    # {
+    #   if(s1>s1_threshold & s2>s2_threshold)
+    #   {
+    #     chosen[index_pks]=T
+    #     results$gt[experimental_index[index_pks]]=T
+    #   }
+    # }
+
+    chosen=rep(F,num_peaks)
+    chosen[index_pks]=(!is.na(s1)&!is.na(s2))&(s1>s1_threshold & s2>s2_threshold)
+
+
+    #Adjust magnitude in the NA mode for plotting
+    if(is.null(full_spectrum))
       experimental_magnitude[index_full_spectrum]=NA
+
+
+    #Store results
+    results$s1_scores[experimental_index[which(chosen)]]=s1
+    results$s2_scores[experimental_index[which(chosen)]]=s2
+    results$cluster_names[experimental_index[which(chosen)]]=cluster
+    results$gt[experimental_index[which(chosen)]]=T
+    results$count[experimental_index[which(chosen)]]=results$count[experimental_index[which(chosen)]]+1
+
+    results$patterns_out$experimental_mass[calculated_index]=experimental_mass
+    results$patterns_out$s1_scores[calculated_index]=s1
+    results$patterns_out$s2_scores[calculated_index]=s2
+    results$patterns_out$present[calculated_index[index_pks]]=T
 
     #Generate plots
     if(pkg_opt()$verbose_level<=-1 || generate_pdf)
     {
       #Print progress to console
-      print(paste(cluster,s1,s2,s2_pks))
+      print(paste(cluster,s1,s2_all,s2_pks))
 
       #Normalize
       if(sum(!is.na(experimental_magnitude))!=0 && max(experimental_magnitude,na.rm=T)!=0)
         norm_image_intensity=experimental_magnitude/max(experimental_magnitude,na.rm=T)
+      else
+        norm_image_intensity=experimental_magnitude
       if(max(calculated_magnitude)!=0)
         calculated_magnitude=calculated_magnitude/max(calculated_magnitude)
 
@@ -298,12 +363,12 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
 
       #Spectrum comparison plot
       label = append(rep("",length(s2_individual)),round(s2_individual,2))
-      linetype=rep("solid",length(calculated_mass)*2)
-      linetype[index_full_spectrum+length(calculated_mass)]="dotted"
+      linetype=rep("solid",num_peaks*2)
+      linetype[index_full_spectrum+num_peaks]="dotted"
       #linetype=append(rep("solid",length(s2_individual)),rep("dotted",length(s2_individual)))
       plt_spectrum= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) +
                     geom_linerange(linetype=linetype) + geom_point() + geom_text(aes(label=label,vjust=0)) +
-                    ggtitle(paste(cluster,"; S1:",round(s1,2),"; S2:",round(s2,2),"; S2_p:",round(s2_pks,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))) +
+                    ggtitle(paste(cluster,"; S1:",round(s1,2),"; S2_a:",round(s2_all,2),"; S2_p:",round(s2_pks,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))) +
                     xlab("m/z") + ylab("Normalized Intensity") +
                     scale_colour_discrete(name="",breaks=c("calculated_magnitude","experimental_magnitude"),labels=c("Calculated m/z","Experimental m/z"))+
                     theme(legend.position="bottom")
@@ -316,7 +381,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
       #Print cluster images
       page_layout=default_page_layout
       offset=match(3,c(t(page_layout)))-1
-      for(i in 1:length(experimental_index))
+      for(i in 1:num_peaks)
       {
         title=paste("m/z",round(calculated_mass[i],pkg_opt("round_digits")))
         if(is.element(i,index_pks))
@@ -324,7 +389,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
         else
           title=paste(title,"(NOT IN PEAK MATRIX)")
         plts=c(plts,list(ggplot_peak_image(pks,final_image[,i],title,is.na(experimental_magnitude[i]),chosen[i],is.element(i,index_pks))))
-        if((i+offset)%%length(page_layout)==0||i==length(experimental_index))
+        if((i+offset)%%length(page_layout)==0||i==num_peaks)
         {
           grid.arrange(grobs=plts,layout_matrix=page_layout)
           plts=list()
@@ -335,7 +400,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
     }
   }
 
-  gt=unique(gt)
+  gt=pks$mass[which(results$gt)]
   not_gt=setdiff(pks$mass,gt)
 
   #Generate putative clusters
@@ -377,7 +442,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum,
     #Close pdf file
     dev.off()
   }
-  return(gt)
+  return(results)
 }
 
 

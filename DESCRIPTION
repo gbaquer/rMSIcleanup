@@ -13,6 +13,7 @@ LazyData: true
 Imports: 
   Rcpp (>= 1.0.0),
   R.utils,
+  rMSI,
   rMSIproc,
   gridExtra,
   lattice,

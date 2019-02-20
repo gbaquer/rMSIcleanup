@@ -2,19 +2,47 @@
 % Please edit documentation in R/validation_module.R
 \name{generate_gt}
 \alias{generate_gt}
-\title{Generate gold standard}
+\title{Generate ground truth}
 \usage{
-generate_gt(matrix_formula, pks, matching_method = "strict",
-  cor_threshold = 0.85)
+generate_gt(matrix_formula, pks, full_spectrum = NULL,
+  s1_threshold = 0.85, s2_threshold = 0.85, MALDI_resolution = 20000,
+  tol_mode = "ppm", tol_ppm = 2e-04, tol_scans = 4,
+  mag_of_interest = "intensity", normalization = "None",
+  max_multi = 10, add_list = NULL, sub_list = NULL,
+  generate_pdf = F, default_page_layout = NULL)
 }
 \arguments{
 \item{matrix_formula}{String giving the chemical formula of the matrix in the enviPat notation}
 
-\item{pks}{Peak Matrix Image}
+\item{pks}{Peak Matrix Image produced using rMSIproc}
 
-\item{matching_method}{"loose": All peaks within a given tolerance are considered matrix peaks; "strict": Only peaks within a given tolerance that mantain the abundance ratios for each cluster are considered matrix peaks}
+\item{full_spectrum}{Full spectrum before performing peak picking. It is used to give a higher degree of confidence to the S1 and S2 computation.}
 
-\item{cor_threshold}{Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present and thus included in the gold truth (gt)}
+\item{s1_threshold}{Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present}
+
+\item{s2_threshold}{Correlation between the spatial images of the peak in a cluster above which the peaks are included in the gold truth (gt)}
+
+\item{MALDI_resolution}{MALDI resolution that is used to merge nearby peaks in-silico as the equipment would in real life}
+
+\item{tol_mode}{String determining the tolerance mode to be used when comparing the calculated masses with the experimental ones. "ppm": relative tolerance with respect to the calculated one in parts per million. "scans": Number of scans or datapoints present in the full spectrum -It is only applicable if full_spectrum is provided.}
+
+\item{tol_ppm}{Tolerance in parts per million. Only used if tol_mode="ppm".}
+
+\item{tol_scans}{Tolerance in number of scans. Only used if tol_mode="scans".}
+
+\item{mag_of_interest}{Magnitude of interest to use when performing the study. It can be "intensity" or "area".}
+
+\item{normalization}{String indicating the normalization technique to use. Possible values: "None", "TIC","RMS", "MAX" or "AcqTic"}
+
+\item{max_multi}{Maximum Cluster Multiplication. For each adduct -Adduct- it will generate a set of base formulas as follows: M+Adduct, 2M+Adduct, 3M+Adduct ... max_multi*M + Adduct}
+
+\item{add_list}{List of adducts to be added to the matrix formula in the format defined by enviPat. Example: c("H1","Na1","K1")}
+
+\item{sub_list}{List of compounds to be substracted to the matrix formula in the format defined by enviPat. Example: c("H1",H2O1")}
+
+\item{generate_pdf}{Boolean indicating whether to generate a pdf report or not}
+
+\item{default_page_layout}{Page layout to be used in the pdf plotting.}
 }
 \value{
 Ground Truth: List of masses available in the image that correspond to the matrix.

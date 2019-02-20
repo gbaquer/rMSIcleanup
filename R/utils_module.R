@@ -57,32 +57,6 @@ pkg_opt= set_opt(
   )
 )
 
-#' Cosine similarity two vectors
-#'
-#' Returns the cosine similarity between two vectors
-#'
-#' @param ix Input vectors
-#'
-cos_sim_vectors <- function(ix)
-{
-  A = X[ix[1],]
-  B = X[ix[2],]
-  return( sum(A*B)/sqrt(sum(A^2)*sum(B^2)) )
-}
-
-#' Cosine similarity two vectors
-#'
-#' Returns the cosine similarity between two vectors
-#'
-#' @param X Input matrix
-#'
-cos_sim <- function(X)
-{
-  n <- nrow(X)
-  cmb <- expand.grid(i=1:n, j=1:n)
-  C <- matrix(apply(cmb,1,cos_sim_vectors),n,n)
-  return(C)
-}
 #' Plot text
 #'
 #' Plots text with white background
@@ -90,16 +64,6 @@ cos_sim <- function(X)
 #' @param text Text to be plotted
 #' @param size Size of the text
 #'
-# plot_text <- function(text, size=5)
-# {
-#   default <- par()
-#   par(mar = rep(1, 4))
-#   par(oma = rep(0, 4))
-#   plot(NA, xlim=c(0,1), ylim=c(0,1), bty='n',
-#        xaxt='n', yaxt='n', xlab='', ylab='')
-#   text(0,1,text, pos=4)
-#   par(default)
-# }
 plot_text <- function(text,size=3)
 {
   p=ggplot() + geom_label()+ annotate("text", x = 0:1, y = c(1,0), size=size, label = c(text,NA), vjust=1,hjust=0) +
@@ -113,6 +77,17 @@ plot_text <- function(text,size=3)
   return(p)
 }
 
+#' Plot peak image
+#'
+#' Plots a peak image
+#'
+#' @param pks Peak matrix
+#' @param values Values to be plotted
+#' @param title Title of the plot
+#' @param isNA Is NA
+#' @param chosen Is chosen
+#' @param in_pksMat Is in pksMat
+#'
 ggplot_peak_image <- function(pks,values=NA,title="",isNA=F,chosen=T,in_pksMat=T)
 {
   # zplots<-matrix(NA, nrow=max(pks$pos[,1]), ncol=max(pks$pos[,2]))
@@ -121,6 +96,9 @@ ggplot_peak_image <- function(pks,values=NA,title="",isNA=F,chosen=T,in_pksMat=T
   #   zplots[pks$pos[ i , 1 ], pks$pos[ i , 2 ]] <- values[i]
   # }
   #levelplot(zplots)
+  x=NULL
+  y=NULL
+  z=NULL
   if(isNA)
   {
     p=ggplot() + geom_label()+ annotate("text", x = 0, y = 0, size=5, label = "NA") +
@@ -374,6 +352,45 @@ is_within_scan_tol <- function(experimental_mass,calculated_mass,full_spectrum_m
 }
 
 #RANDOM CHUNCKS OF CODE
+# Cosine similarity two vectors
+#
+# Returns the cosine similarity between two vectors
+#
+# @param ix Input vectors
+#
+# cos_sim_vectors <- function(ix)
+# {
+#   A = X[ix[1],]
+#   B = X[ix[2],]
+#   return( sum(A*B)/sqrt(sum(A^2)*sum(B^2)) )
+# }
+
+# Cosine similarity two vectors
+#
+# Returns the cosine similarity between two vectors
+#
+# @param X Input matrix
+#
+# cos_sim <- function(X)
+# {
+#   n <- nrow(X)
+#   cmb <- expand.grid(i=1:n, j=1:n)
+#   C <- matrix(apply(cmb,1,cos_sim_vectors),n,n)
+#   return(C)
+# }
+
+# plot_text <- function(text, size=5)
+# {
+#   default <- par()
+#   par(mar = rep(1, 4))
+#   par(oma = rep(0, 4))
+#   plot(NA, xlim=c(0,1), ylim=c(0,1), bty='n',
+#        xaxt='n', yaxt='n', xlab='', ylab='')
+#   text(0,1,text, pos=4)
+#   par(default)
+# }
+
+
 # plot_text <- function(text,size=5)
 # {
 #   p=ggplot() + geom_label()+ annotate("text", x = 0:1, y = c(1,0), size=size, label = c(text,NA), vjust=1,hjust=0) + scale_x_continuous(expand=c(0,10))+ scale_y_continuous(expand=c(0,sqrt(2)*10)) #+ coord_fixed(sqrt(2))#+
