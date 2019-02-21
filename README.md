@@ -1,6 +1,8 @@
 # rMSIcleanup
 Package for annotating and removing the matrix peaks in MALDI data. It is compatible with the imzML and rMSI .tar formats.
 
+### This package is still under development and no stable version has been released yet
+
 ### Installation
 The simplest way to install rMSIcleanup and keep it updated is using devtools package. Install devtools from CRAN into your R session:
 ```R

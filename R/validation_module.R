@@ -189,7 +189,8 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     }
     multiplier=multiplier+1
   }
-  #5. Determine matches with masses
+
+  #6. Determine s1 and s2 scores for each calculated cluster
   mean_image=apply(pks[[mag_of_interest]],2,mean)
   clusters=unique(patterns_out$cluster)
 
@@ -307,17 +308,6 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
 
 
     #Choose which peaks belong in the ground truth (gt)
-
-    # chosen=rep(F,num_peaks)
-    # if(!is.na(s1)&!is.na(s2))
-    # {
-    #   if(s1>s1_threshold & s2>s2_threshold)
-    #   {
-    #     chosen[index_pks]=T
-    #     results$gt[experimental_index[index_pks]]=T
-    #   }
-    # }
-
     chosen=rep(F,num_peaks)
     chosen[index_pks]=(!is.na(s1)&!is.na(s2))&(s1>s1_threshold & s2>s2_threshold)
 
@@ -339,7 +329,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     results$patterns_out$s2_scores[calculated_index]=s2
     results$patterns_out$present[calculated_index[index_pks]]=T
 
-    #Generate plots
+    # 7. Generate plots
     if(pkg_opt()$verbose_level<=-1 || generate_pdf)
     {
       #Print progress to console
@@ -399,13 +389,15 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     }
   }
 
-  gt=pks$mass[which(results$gt)]
-  gt_cluster_names=results$cluster_names[which(results$gt)]
-  not_gt=setdiff(pks$mass,gt)
+
 
   #Generate putative clusters
   #[Functionality demanded by Maria]
 
+  #8.Summary of the report
+  gt=pks$mass[which(results$gt)]
+  gt_cluster_names=results$cluster_names[which(results$gt)]
+  not_gt=setdiff(pks$mass,gt)
   if(generate_pdf)
   {
     #Print images of the ground truth
@@ -438,6 +430,22 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
         }
       }
     }
+
+    #Print calculated clusters S1 vs. S2
+    clusters=unique(results$patterns_out$cluster)
+    cluster_indices=match(clusters,results$patterns_out$cluster)
+    s1_scores=results$patterns_out$s1_scores[cluster_indices]
+    s2_scores=results$patterns_out$s2_scores[cluster_indices]
+
+    plot(s1_scores,s2_scores)
+    text(s1_scores, s2_scores, labels=clusters, cex= 0.7, pos=3)
+    abline(v = s1_threshold)
+    abline(h = s2_threshold)
+
+    plot(s1_scores,s2_scores,xlim = c(s1_threshold,1),ylim=c(s2_threshold,1))
+    text(s1_scores, s2_scores, labels=clusters, cex= 0.7, pos=3)
+    abline(v = s1_threshold)
+    abline(h = s2_threshold)
 
     #Close pdf file
     dev.off()
