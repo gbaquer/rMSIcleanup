@@ -139,7 +139,6 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     text=add_entry(text,"PROCESSING INFORMATION")
     text=add_entry(text,"- S1 threshold:",s1_threshold)
     text=add_entry(text,"- S2 threshold:",s2_threshold)
-    text=add_entry(text,"- S2 threshold:",s2_threshold)
     text=add_entry(text,"- Magnitude of interest:",mag_of_interest)
     text=add_entry(text,"- Tolerance mode:",tol_mode)
     if(tol_mode=="ppm")
@@ -401,6 +400,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
   }
 
   gt=pks$mass[which(results$gt)]
+  gt_cluster_names=results$cluster_names[which(results$gt)]
   not_gt=setdiff(pks$mass,gt)
 
   #Generate putative clusters
@@ -415,7 +415,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
       gt_index=match(gt,pks$mass)
       for(i in 1:length(gt))
       {
-        plts=c(plts,list(ggplot_peak_image(pks,pks[[mag_of_interest]][,gt_index[i]],paste("m/z",round(gt[i],pkg_opt("round_digits"))),chosen=T)))
+        plts=c(plts,list(ggplot_peak_image(pks,pks[[mag_of_interest]][,gt_index[i]],paste("m/z",round(gt[i],pkg_opt("round_digits")),"(",gt_cluster_names[i],")"),chosen=T)))
         if(i%%length(page_layout)==0||i==length(gt))
         {
           grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))

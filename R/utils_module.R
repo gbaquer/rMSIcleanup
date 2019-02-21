@@ -67,7 +67,7 @@ pkg_opt= set_opt(
 plot_text <- function(text,size=3)
 {
   p=ggplot() + geom_label()+ annotate("text", x = 0:1, y = c(1,0), size=size, label = c(text,NA), vjust=1,hjust=0) +
-    coord_fixed(sqrt(2),expand = F)+
+    #coord_fixed(sqrt(2),expand = F)+
     theme(axis.line=element_blank(),axis.text.x=element_blank(),
           axis.text.y=element_blank(),axis.ticks=element_blank(),
           axis.title.x=element_blank(),
@@ -174,15 +174,18 @@ find_first_lt <- function(x,k) match(T,x<k)
 #' @param mass_range Vector containing the minimum and maximum masses to be used in the process. The default is the complete mass range.
 #' @param num_clus Number of clusters to use. Defaults to 3.
 #' @param f Function to use when plotting the resulting spectral clusters in the spatial domain. The function should take a numerical vector and return a single number. Default is mean
+#' @param generate_pdf Boolean value indicating if a pdf report needs to be produced
+#' @param normalization String indicating the normalization technique to use. Possible values: "None", "TIC","RMS", "MAX" or "AcqTic"
 #'
 #' @return Matrix containing the masses processed along with the cluster to which each of them is assigned
 #'
 #' @export
 
-spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), num_clus=3, f=mean)
+spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), num_clus=3, f=mean,generate_pdf=F, normalization="None")
 {
   # Normalize
-  pks$intensity <- pks$intensity/pks$normalizations$TIC
+  if(normalization!="None")
+    pks$intensity <- pks$intensity/pks$normalizations[[normalization]]
   # Prune masses
   cols=find_first_gt(pks$mass,mass_range[1]):find_first_gt(pks$mass,mass_range[2])
   pks$intensity<-pks$intensity[,cols]
@@ -194,6 +197,33 @@ spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), 
   clus <- kmeans(pca$x, centers = num_clus,iter.max = 100)
   labels = paste("Cluster",1:length(clus$size))
 
+  # Open pdf report
+  if(generate_pdf)
+  {
+    #Generate pdf name
+    pdf_file=generate_file_name(pks$names[1])
+    #open pdf file
+    a4_height=8.27
+    a4_width=11.69
+    pdf(pdf_file,paper='a4r',width=a4_width,height=a4_height)
+
+    #First page of metadata [File name, mean image, matrix formula, adducts list, base forms, S1_threshold]
+    text=""
+    text=add_entry(text,"#")
+    text=add_entry(text,"- Package Version:",packageVersion("rMSIcleanup"))
+    text=add_entry(text,"- Time:",as.character(Sys.time()))
+    text=add_entry(text,"#")
+    text=add_entry(text,"IMAGE INFORMATION")
+    text=add_entry(text,"- Peak matrix:",pks$names[1])
+    text=add_entry(text,"- Number of peaks:",length(pks$mass))
+    text=add_entry(text,"- Number of pixels:",pks$numPixels[1])
+    text=add_entry(text,"- Mass Range: [",min(pks$mass),", ", max(pks$mass),"]")
+    text=add_entry(text,"#")
+    text=add_entry(text,"CLUSTERING INFORMATION")
+    text=add_entry(text,"- Number of clusters:",num_clus)
+    text=add_entry(text,"#")
+    print(plot_text(text))
+  }
   # Plot PC1 vs. PC2
   pca_plot <- plot(pca$x[,c(1,2)],
                    col=clus$cluster,
@@ -211,11 +241,28 @@ spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), 
 
   # Plot cluster images
   # Transform the spectral images of each cluster into a single spectral image to be plotted
+  page_layout=rbind(c(1,3),
+                    c(1,3),
+                    c(2,4))
+  plts=list()
   for(i in 1:length(clus$withins))
   {
     image=apply(pks$intensity[,which(clus$cluster==i)],1,f)
-    rMSIproc::plotValuesImage( peakMatrix = pks, values = image,labels = labels[i])
+    #rMSIproc::plotValuesImage( peakMatrix = pks, values = image,labels = labels[i])
+    plts=append(plts,list(ggplot_peak_image(pks,image,labels[i])))
+    text=add_entry("",paste(round(pks$mass[which(clus$cluster==i)],pkg_opt("round_digits")),collapse=" ; "))
+    plts=append(plts,list(plot_text(text)))
+    if(i%%2==0||i==length(clus$withins))
+    {
+      grid.arrange(grobs=plts,layout_matrix=page_layout)
+      plts=list()
+    }
   }
+
+  # Close pdf report
+  if(generate_pdf)
+    dev.off()
+
   return(list(mass=pks$mass,cluster=clus$cluster))
 }
 
