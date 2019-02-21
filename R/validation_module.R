@@ -47,7 +47,7 @@
 #'
 #' @export
 generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
-                         s1_threshold=0.85,s2_threshold=0.85,
+                         s1_threshold=0.85,s2_threshold=0.85,similarity_method="euclidean",
                          MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                          mag_of_interest="intensity",normalization="None",
                          max_multi=10, add_list=NULL, sub_list=NULL,
@@ -139,6 +139,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     text=add_entry(text,"PROCESSING INFORMATION")
     text=add_entry(text,"- S1 threshold:",s1_threshold)
     text=add_entry(text,"- S2 threshold:",s2_threshold)
+    text=add_entry(text,"- Similarity method:",similarity_method)
     text=add_entry(text,"- Magnitude of interest:",mag_of_interest)
     text=add_entry(text,"- Tolerance mode:",tol_mode)
     if(tol_mode=="ppm")
@@ -207,6 +208,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
   results=list(
     s1_scores=rep(NA,num_peaks_in_matrix),
     s2_scores=rep(NA,num_peaks_in_matrix),
+    s3_scores=rep(NA,num_peaks_in_matrix),
     cluster_names=rep(NA,num_peaks_in_matrix),
     gt=rep(F,num_peaks_in_matrix),
     count=rep(0,num_peaks_in_matrix),
@@ -227,15 +229,14 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     num_peaks=length(calculated_index)
 
     #Determine mass relative error
+    rel_error=(experimental_mass-calculated_mass)/calculated_mass
     if(tol_mode=="ppm")
     {
-      rel_error=abs(experimental_mass-calculated_mass)/calculated_mass
-      index_pks=which(rel_error<=tol_ppm) #Peaks to be taken from the peak matrix
-      index_full_spectrum=which(rel_error>tol_ppm) #Peaks to be taken from the full spectrum
+      index_pks=which(abs(rel_error)<=tol_ppm) #Peaks to be taken from the peak matrix
+      index_full_spectrum=which(abs(rel_error)>tol_ppm) #Peaks to be taken from the full spectrum
     }
     else
     {
-      rel_error=abs(experimental_mass-calculated_mass)/calculated_mass
       index_pks=which(unlist(lapply(1:num_peaks,function(i)is_within_scan_tol(experimental_mass[i],calculated_mass[i],full_spectrum$mass,tol_scans))))#Peaks to be taken from the peak matrix
       index_full_spectrum=setdiff(1:num_peaks,index_pks) #Peaks to be taken from the full spectrum
     }
@@ -282,7 +283,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     colnames(final_image)<-NULL #Remove column names
 
     #Compute S1
-    s1=cor(calculated_magnitude,experimental_magnitude)
+    s1=exponential_decay_similarity(calculated_magnitude[index_pks],experimental_magnitude[index_pks],method=similarity_method)
     if(num_peaks==1)
       s1=1
 
@@ -306,6 +307,8 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     #Compute S2
     s2=max(s2_all,s2_pks,na.rm=T)
 
+    #Compute S3
+    s3=exponential_decay_similarity(calculated_mass[index_pks]/calculated_mass[index_pks],experimental_mass[index_pks]/calculated_mass[index_pks],method=similarity_method)
 
     #Choose which peaks belong in the ground truth (gt)
     chosen=rep(F,num_peaks)
@@ -320,6 +323,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     #Store results
     results$s1_scores[experimental_index[which(chosen)]]=s1
     results$s2_scores[experimental_index[which(chosen)]]=s2
+    results$s3_scores[experimental_index[which(chosen)]]=s3
     results$cluster_names[experimental_index[which(chosen)]]=cluster
     results$gt[experimental_index[which(chosen)]]=T
     results$count[experimental_index[which(chosen)]]=results$count[experimental_index[which(chosen)]]+1
@@ -327,6 +331,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     results$patterns_out$experimental_mass[calculated_index]=experimental_mass
     results$patterns_out$s1_scores[calculated_index]=s1
     results$patterns_out$s2_scores[calculated_index]=s2
+    results$patterns_out$s3_scores[calculated_index]=s3
     results$patterns_out$present[calculated_index[index_pks]]=T
 
     # 7. Generate plots
@@ -374,7 +379,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
       {
         title=paste("m/z",round(calculated_mass[i],pkg_opt("round_digits")))
         if(is.element(i,index_pks))
-          title=paste(title," +/-",round(rel_error[i]*1e6),"ppm")
+          title=paste(title,round(rel_error[i]*1e6),"ppm")
         else
           title=paste(title,"(NOT IN PEAK MATRIX)")
         plts=c(plts,list(ggplot_peak_image(pks,final_image[,i],title,is.na(experimental_magnitude[i]),chosen[i],is.element(i,index_pks))))
@@ -436,14 +441,15 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     cluster_indices=match(clusters,results$patterns_out$cluster)
     s1_scores=results$patterns_out$s1_scores[cluster_indices]
     s2_scores=results$patterns_out$s2_scores[cluster_indices]
+    s3_scores=results$patterns_out$s3_scores[cluster_indices]
 
-    plot(s1_scores,s2_scores)
-    text(s1_scores, s2_scores, labels=clusters, cex= 0.7, pos=3)
+    plot(s1_scores,s3_scores)
+    text(s1_scores, s3_scores, labels=clusters, cex= 0.7, pos=3)
     abline(v = s1_threshold)
     abline(h = s2_threshold)
 
-    plot(s1_scores,s2_scores,xlim = c(s1_threshold,1),ylim=c(s2_threshold,1))
-    text(s1_scores, s2_scores, labels=clusters, cex= 0.7, pos=3)
+    plot(s1_scores,s3_scores,xlim = c(s1_threshold,1),ylim=c(s2_threshold,1))
+    text(s1_scores, s3_scores, labels=clusters, cex= 0.7, pos=3)
     abline(v = s1_threshold)
     abline(h = s2_threshold)
 

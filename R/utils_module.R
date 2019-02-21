@@ -398,6 +398,32 @@ is_within_scan_tol <- function(experimental_mass,calculated_mass,full_spectrum_m
   return((experimental_mass>min(mass_range))&(experimental_mass<max(mass_range)))
 }
 
+# SIMILARITY MEASURES
+
+#' Exponential Decay Similarity
+#'
+#' Determines the degree of similarity between a vector a and a vector b as 1/exp(d) where d corresponds to the distance between the two normalized vectors calculated according to the specified method
+#'
+#' @param a Vector a
+#' @param b Vector b
+#' @param method The distance measure to be used. This must be one of "euclidean", "maximum", "manhattan", "canberra", "binary" or "minkowski". Any unambiguous substring can be given.
+#'
+#' @return Similarity between a and b
+exponential_decay_similarity <- function(a,b,method="euclidian")
+{
+  #Normalize
+  a=a/max(a)
+  b=b/max(b)
+
+  #Calculate distance
+  d=dist(rbind(a,b),method=method)
+
+  #Calculate similarity
+  s=1/exp(d)
+
+  return(s)
+}
+
 #RANDOM CHUNCKS OF CODE
 # Cosine similarity two vectors
 #
