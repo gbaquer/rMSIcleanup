@@ -409,17 +409,23 @@ is_within_scan_tol <- function(experimental_mass,calculated_mass,full_spectrum_m
 #' @param method The distance measure to be used. This must be one of "euclidean", "maximum", "manhattan", "canberra", "binary" or "minkowski". Any unambiguous substring can be given.
 #'
 #' @return Similarity between a and b
-exponential_decay_similarity <- function(a,b,method="euclidian")
+exponential_decay_similarity <- function(a,b,method="euclidian",normalize=T)
 {
   #Normalize
-  a=a/max(a)
-  b=b/max(b)
+  if(normalize)
+  {
+    a=a/max(a)
+    b=b/max(b)
+  }
 
   #Calculate distance
   d=dist(rbind(a,b),method=method)
 
   #Calculate similarity
   s=1/exp(d)
+
+  if(is.na(s))
+    s=0
 
   return(s)
 }

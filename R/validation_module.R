@@ -31,6 +31,7 @@
 #' @param full_spectrum Full spectrum before performing peak picking. It is used to give a higher degree of confidence to the S1 and S2 computation.
 #' @param s1_threshold Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present
 #' @param s2_threshold Correlation between the spatial images of the peak in a cluster above which the peaks are included in the gold truth (gt)
+#' @param s3_threshold Correlation between the spatial images of the peak in a cluster above which the peaks are included in the gold truth (gt)
 #' @param MALDI_resolution MALDI resolution that is used to merge nearby peaks in-silico as the equipment would in real life
 #' @param tol_mode String determining the tolerance mode to be used when comparing the calculated masses with the experimental ones. "ppm": relative tolerance with respect to the calculated one in parts per million. "scans": Number of scans or datapoints present in the full spectrum -It is only applicable if full_spectrum is provided.
 #' @param tol_ppm Tolerance in parts per million. Only used if tol_mode="ppm".
@@ -47,7 +48,7 @@
 #'
 #' @export
 generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
-                         s1_threshold=0.85,s2_threshold=0.85,similarity_method="euclidean",
+                         s1_threshold=0.80,s2_threshold=0.85, s3_threshold=0.7, similarity_method="euclidean",
                          MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                          mag_of_interest="intensity",normalization="None",
                          max_multi=10, add_list=NULL, sub_list=NULL,
@@ -308,11 +309,14 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     s2=max(s2_all,s2_pks,na.rm=T)
 
     #Compute S3
-    s3=exponential_decay_similarity(calculated_mass[index_pks]/calculated_mass[index_pks],experimental_mass[index_pks]/calculated_mass[index_pks],method=similarity_method)
+    a=calculated_mass[index_pks]
+    b=experimental_mass[index_pks]
+    s3=rMSIcleanup::exponential_decay_similarity(diff(a)*1e4/max(b),diff(b)*1e4/max(b),method=similarity_method,normalize = F)
+    #s3=exponential_decay_similarity(calculated_mass[index_pks]/calculated_mass[index_pks],experimental_mass[index_pks]/calculated_mass[index_pks],method=similarity_method)
 
     #Choose which peaks belong in the ground truth (gt)
     chosen=rep(F,num_peaks)
-    chosen[index_pks]=(!is.na(s1)&!is.na(s2))&(s1>s1_threshold & s2>s2_threshold)
+    chosen[index_pks]=(!is.na(s1)&!is.na(s2)&!is.na(s3))&(s1>s1_threshold & s2>s2_threshold & s3>s3_threshold)
 
 
     #Adjust magnitude in the NA mode for plotting
@@ -338,7 +342,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     if(pkg_opt()$verbose_level<=-1 || generate_pdf)
     {
       #Print progress to console
-      print(paste(cluster,s1,s2_all,s2_pks))
+      print(paste(cluster,s1,s2,s3))
 
       #Normalize
       if(sum(!is.na(experimental_magnitude))!=0 && max(experimental_magnitude,na.rm=T)!=0)
@@ -362,7 +366,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
       #linetype=append(rep("solid",length(s2_individual)),rep("dotted",length(s2_individual)))
       plt_spectrum= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) +
                     geom_linerange(linetype=linetype) + geom_point() + geom_text(aes(label=label,vjust=0)) +
-                    ggtitle(paste(cluster,"; S1:",round(s1,2),"; S2_a:",round(s2_all,2),"; S2_p:",round(s2_pks,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))) +
+                    ggtitle(paste(cluster,"; S1:",round(s1,2),"; S2:",round(s2,2),"; S3:",round(s3,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))) +
                     xlab("m/z") + ylab("Normalized Intensity") +
                     scale_colour_discrete(name="",breaks=c("calculated_magnitude","experimental_magnitude"),labels=c("Calculated m/z","Experimental m/z"))+
                     theme(legend.position="bottom")
@@ -436,22 +440,34 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
       }
     }
 
-    #Print calculated clusters S1 vs. S2
+    #Print calculated clusters
     clusters=unique(results$patterns_out$cluster)
     cluster_indices=match(clusters,results$patterns_out$cluster)
     s1_scores=results$patterns_out$s1_scores[cluster_indices]
     s2_scores=results$patterns_out$s2_scores[cluster_indices]
     s3_scores=results$patterns_out$s3_scores[cluster_indices]
 
-    plot(s1_scores,s3_scores)
-    text(s1_scores, s3_scores, labels=clusters, cex= 0.7, pos=3)
+    #S1 vs. S2
+    plot(s1_scores,s2_scores)
+    text(s1_scores, s2_scores, labels=clusters, cex= 0.7, pos=3)
     abline(v = s1_threshold)
     abline(h = s2_threshold)
 
-    plot(s1_scores,s3_scores,xlim = c(s1_threshold,1),ylim=c(s2_threshold,1))
-    text(s1_scores, s3_scores, labels=clusters, cex= 0.7, pos=3)
+    plot(s1_scores,s2_scores,xlim = c(s1_threshold,1),ylim=c(s2_threshold,1))
+    text(s1_scores, s2_scores, labels=clusters, cex= 0.7, pos=3)
     abline(v = s1_threshold)
     abline(h = s2_threshold)
+
+    #S1 vs. S3
+    plot(s1_scores,s3_scores)
+    text(s1_scores, s3_scores, labels=clusters, cex= 0.7, pos=3)
+    abline(v = s1_threshold)
+    abline(h = s3_threshold)
+
+    plot(s1_scores,s3_scores,xlim = c(s1_threshold,1),ylim=c(s3_threshold,1))
+    text(s1_scores, s3_scores, labels=clusters, cex= 0.7, pos=3)
+    abline(v = s1_threshold)
+    abline(h = s3_threshold)
 
     #Close pdf file
     dev.off()
