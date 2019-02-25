@@ -5,7 +5,8 @@
 \title{Generate report spectral clustering}
 \usage{
 spectral_clustering(pks, mass_range = c(min(pks$mass), max(pks$mass)),
-  num_clus = 3, f = mean)
+  num_clus = 3, f = mean, generate_pdf = F, normalization = "None",
+  legend_pos = "topright")
 }
 \arguments{
 \item{pks}{Input Peak Matrix}
@@ -15,6 +16,12 @@ spectral_clustering(pks, mass_range = c(min(pks$mass), max(pks$mass)),
 \item{num_clus}{Number of clusters to use. Defaults to 3.}
 
 \item{f}{Function to use when plotting the resulting spectral clusters in the spatial domain. The function should take a numerical vector and return a single number. Default is mean}
+
+\item{generate_pdf}{Boolean value indicating if a pdf report needs to be produced}
+
+\item{normalization}{String indicating the normalization technique to use. Possible values: "None", "TIC","RMS", "MAX" or "AcqTic"}
+
+\item{legend_pos}{String indicating the legend position. "bottomright","bottomleft", "topleft" or "topright"}
 }
 \value{
 Matrix containing the masses processed along with the cluster to which each of them is assigned
