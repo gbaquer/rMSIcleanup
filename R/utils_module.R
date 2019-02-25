@@ -176,12 +176,13 @@ find_first_lt <- function(x,k) match(T,x<k)
 #' @param f Function to use when plotting the resulting spectral clusters in the spatial domain. The function should take a numerical vector and return a single number. Default is mean
 #' @param generate_pdf Boolean value indicating if a pdf report needs to be produced
 #' @param normalization String indicating the normalization technique to use. Possible values: "None", "TIC","RMS", "MAX" or "AcqTic"
+#' @param legend_pos String indicating the legend position. "bottomright","bottomleft", "topleft" or "topright"
 #'
 #' @return Matrix containing the masses processed along with the cluster to which each of them is assigned
 #'
 #' @export
 
-spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), num_clus=3, f=mean,generate_pdf=F, normalization="None")
+spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), num_clus=3, f=mean,generate_pdf=F, normalization="None",legend_pos="topright")
 {
   # Normalize
   if(normalization!="None")
@@ -236,7 +237,7 @@ spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), 
   # Plot spectral clustering results
   mean_spectra=apply(pks$intensity,2,mean)
   plot(pks$mass,mean_spectra,type="h",col=clus$cluster,lwd = 3,lend=1)
-  legend("bottomright", legend=labels,
+  legend(legend_pos, legend=labels,
          col=1:length(clus$size), lty=c(1,1), cex=0.8, lwd=2)
 
   # Plot cluster images

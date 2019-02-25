@@ -1,7 +1,7 @@
 Package: rMSIcleanup
 Type: Package
 Title: Anotation and removal of the matrix peaks in MALDI data
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: as.person(c(
     "Gerard Baquer Gómez <gerard.baquer@urv.cat> [aut, cre]"
   ))

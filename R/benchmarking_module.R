@@ -20,6 +20,28 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ############################################################################
 
+#' Run experiment
+#'
+#' Run a given experiment
+#'
+#' @return None
+#'
+#'
+#' @export
+run_experiment <- function (base_dir="C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1") {
+  #0. Prepare directories
+  images_dir=paste(base_dir,"/images",collapse="")
+  output_dir=paste(base_dir,"/output/",collapse="")
+  report_folder=generate_file_name("Experiment",extension = "",folder = output_dir)
+
+  #1. Generate experiment metadata file
+  #[PENDING]
+
+  #2. Run experiment
+  full_spectrum_list=list.files(images_dir,pattern = "*-proc.tar",recursive = T)
+  pks_list=list.files(images_dir,pattern = "*-proc.tar",recursive = T)
+}
+
 #' Cross validation.
 #'
 #' Compare the results of all methods to assess consistency.

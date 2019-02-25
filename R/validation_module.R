@@ -116,7 +116,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
     #First page of metadata [File name, mean image, matrix formula, adducts list, base forms, S1_threshold]
     text=""
     text=add_entry(text,"#")
-    text=add_entry(text,"- Package Version:",packageVersion("rMSIcleanup"))
+    text=add_entry(text,"- Package Version:",paste(packageVersion("rMSIcleanup"),collapse = "."))
     text=add_entry(text,"- Time:",as.character(Sys.time()))
     text=add_entry(text,"#")
     text=add_entry(text,"IMAGE INFORMATION")
