@@ -408,6 +408,7 @@ is_within_scan_tol <- function(experimental_mass,calculated_mass,full_spectrum_m
 #' @param a Vector a
 #' @param b Vector b
 #' @param method The distance measure to be used. This must be one of "euclidean", "maximum", "manhattan", "canberra", "binary" or "minkowski". Any unambiguous substring can be given.
+#' @param normalize Boolean value indicating whether the a and b vectors should be normalixzed
 #'
 #' @return Similarity between a and b
 exponential_decay_similarity <- function(a,b,method="euclidian",normalize=T)

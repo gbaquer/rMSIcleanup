@@ -12,6 +12,8 @@ exponential_decay_similarity(a, b, method = "euclidian", normalize = T)
 \item{b}{Vector b}
 
 \item{method}{The distance measure to be used. This must be one of "euclidean", "maximum", "manhattan", "canberra", "binary" or "minkowski". Any unambiguous substring can be given.}
+
+\item{normalize}{Boolean value indicating whether the a and b vectors should be normalixzed}
 }
 \value{
 Similarity between a and b

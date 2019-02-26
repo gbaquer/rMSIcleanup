@@ -43,11 +43,13 @@
 #' @param sub_list List of compounds to be substracted to the matrix formula in the format defined by enviPat. Example: c("H1",H2O1")
 #' @param generate_pdf Boolean indicating whether to generate a pdf report or not
 #' @param default_page_layout Page layout to be used in the pdf plotting.
+#' @param folder Name of the folder in which to store the pdf report
+#' @param similarity_method Similarity method to be used in the computation of the distance
 #'
 #' @return Ground Truth: List of masses available in the image that correspond to the matrix.
 #'
 #' @export
-generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
+generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/",
                          s1_threshold=0.80,s2_threshold=0.85, s3_threshold=0.7, similarity_method="euclidean",
                          MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                          mag_of_interest="intensity",normalization="None",
@@ -107,7 +109,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL,
   if(generate_pdf)
   {
     #Generate pdf name [pks$name_001]
-    pdf_file=generate_file_name(pks$names[1])
+    pdf_file=generate_file_name(pks$names[1],folder = folder)
     #open pdf file
     a4_width=8.27
     a4_height=11.69

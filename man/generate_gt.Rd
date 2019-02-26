@@ -5,12 +5,12 @@
 \title{Generate ground truth}
 \usage{
 generate_gt(matrix_formula, pks, full_spectrum = NULL,
-  s1_threshold = 0.8, s2_threshold = 0.85, s3_threshold = 0.7,
-  similarity_method = "euclidean", MALDI_resolution = 20000,
-  tol_mode = "ppm", tol_ppm = 2e-04, tol_scans = 4,
-  mag_of_interest = "intensity", normalization = "None",
-  max_multi = 10, add_list = NULL, sub_list = NULL,
-  generate_pdf = F, default_page_layout = NULL)
+  folder = "output/", s1_threshold = 0.8, s2_threshold = 0.85,
+  s3_threshold = 0.7, similarity_method = "euclidean",
+  MALDI_resolution = 20000, tol_mode = "ppm", tol_ppm = 2e-04,
+  tol_scans = 4, mag_of_interest = "intensity",
+  normalization = "None", max_multi = 10, add_list = NULL,
+  sub_list = NULL, generate_pdf = F, default_page_layout = NULL)
 }
 \arguments{
 \item{matrix_formula}{String giving the chemical formula of the matrix in the enviPat notation}
@@ -19,11 +19,15 @@ generate_gt(matrix_formula, pks, full_spectrum = NULL,
 
 \item{full_spectrum}{Full spectrum before performing peak picking. It is used to give a higher degree of confidence to the S1 and S2 computation.}
 
+\item{folder}{Name of the folder in which to store the pdf report}
+
 \item{s1_threshold}{Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present}
 
 \item{s2_threshold}{Correlation between the spatial images of the peak in a cluster above which the peaks are included in the gold truth (gt)}
 
 \item{s3_threshold}{Correlation between the spatial images of the peak in a cluster above which the peaks are included in the gold truth (gt)}
+
+\item{similarity_method}{Similarity method to be used in the computation of the distance}
 
 \item{MALDI_resolution}{MALDI resolution that is used to merge nearby peaks in-silico as the equipment would in real life}
 

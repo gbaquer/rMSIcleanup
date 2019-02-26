@@ -25,21 +25,57 @@
 #' Run a given experiment
 #'
 #' @return None
+#' @param base_dir Base directory where the images are stored and the output reports should be stored
+#' @inheritParams generate_gt
 #'
 #'
 #' @export
-run_experiment <- function (base_dir="C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1") {
+run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1",
+                            s1_threshold=0.80,s2_threshold=0.85, s3_threshold=0.7, similarity_method="euclidean",
+                            MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
+                            mag_of_interest="intensity",normalization="None",
+                            max_multi=10, add_list=NULL, sub_list=NULL,
+                            generate_pdf=T,default_page_layout=NULL) {
   #0. Prepare directories
-  images_dir=paste(base_dir,"/images",collapse="")
-  output_dir=paste(base_dir,"/output/",collapse="")
+  images_dir=paste(base_dir,"/images",sep="")
+  output_dir=paste(base_dir,"/output",sep="")
   report_folder=generate_file_name("Experiment",extension = "",folder = output_dir)
 
   #1. Generate experiment metadata file
   #[PENDING]
 
   #2. Run experiment
-  full_spectrum_list=list.files(images_dir,pattern = "*-proc.tar",recursive = T)
-  pks_list=list.files(images_dir,pattern = "*-proc.tar",recursive = T)
+  full_spectrum_name_list=list.files(images_dir,pattern = "*-proc.tar",recursive = T)
+  pks_name_list=list.files(images_dir,pattern = "*mergeddata-peaks*",recursive = T,full.names = T)
+  subfolder_list=unlist(lapply(strsplit(pks_name_list,'/'),function(x) paste(x[1:length(x)-1],collapse="/")))
+  num_files=length(pks_name_list)
+
+  for(i in 1:num_files)
+  {
+    pks_name=pks_name_list[i]
+    subfolder=subfolder_list[i]
+
+    print(pks_name)
+    pks=rMSIproc::LoadPeakMatrix(pks_name)
+
+
+    for(name in pks$names)
+    {
+      print(name)
+      full_spectrum_name=paste(subfolder,"/",unlist(strsplit(name,".",fixed=T))[1],"-proc.tar",sep="")
+      print(full_spectrum_name)
+
+      full_spectrum=rMSI::LoadMsiData(full_spectrum_name)
+
+      #[Potential improvement: Use ... instead]
+      generate_gt(matrix_formula=matrix_formula,pks=pks,full_spectrum=full_spectrum,
+                  s1_threshold=s1_threshold,s2_threshold=s2_threshold, s3_threshold=s3_threshold, similarity_method=similarity_method,
+                  MALDI_resolution=MALDI_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
+                  mag_of_interest=mag_of_interest,normalization=normalization,
+                  max_multi=max_multi, add_list=add_list, sub_list=sub_list,
+                  generate_pdf=generate_pdf,default_page_layout=default_page_layout)
+    }
+  }
 }
 
 #' Cross validation.
