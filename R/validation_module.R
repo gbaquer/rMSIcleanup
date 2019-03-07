@@ -45,6 +45,9 @@
 #' @param default_page_layout Page layout to be used in the pdf plotting.
 #' @param folder Name of the folder in which to store the pdf report
 #' @param similarity_method Similarity method to be used in the computation of the distance
+#' @param pks_i Index of the peak matrix
+#' @param plot_type String indicating the type of plot desired. Can have two possible values "debug" or "poster"
+#' @param include_summary Boolean value indicating if the summary is to be included in the pd
 #'
 #' @return Ground Truth: List of masses available in the image that correspond to the matrix.
 #'
@@ -52,9 +55,9 @@
 generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/",
                          s1_threshold=0.80,s2_threshold=0.85, s3_threshold=0.7, similarity_method="euclidean",
                          MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
-                         mag_of_interest="intensity",normalization="None",
+                         mag_of_interest="intensity",normalization="None",pks_i=1,
                          max_multi=10, add_list=NULL, sub_list=NULL,
-                         generate_pdf=F,default_page_layout=NULL) {
+                         generate_pdf=F,default_page_layout=NULL,plot_type="debug",include_summary=T) {
   #SECTION -1 :: Input validation
   #Adjust tolerance to ppm if no full_spectrum is provided
   if(is.null(full_spectrum))
@@ -62,17 +65,26 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
   #Page layout
   if(is.null(default_page_layout))
   {
-    default_page_layout=rbind(c(1,1,2,2),
-                      c(1,1,2,2),
-                      c(3,4,5,6),
-                      c(7,8,9,10),
-                      c(11,12,13,14),
-                      c(15,16,17,18))
+    if(plot_type=="poster")
+      default_page_layout=rbind(c(1,1,1,1),
+                              c(1,1,1,1),
+                              c(2,2,2,2),
+                              c(3,4,5,6),
+                              c(7,8,9,10),
+                              c(11,12,13,14))
+    else
+      default_page_layout=rbind(c(1,1,2,2),
+                                c(1,1,2,2),
+                                c(3,4,5,6),
+                                c(7,8,9,10),
+                                c(11,12,13,14),
+                                c(15,16,17,18))
+
   }
   #SECTION 0 :: Preprocessing
 
   # Select first image if there are multiple
-  pks=get_one_peakMatrix(pks)
+  pks=get_one_peakMatrix(pks,pks_i)
 
   # Normalize
   if(normalization!="None")
@@ -192,6 +204,8 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
       }
     }
     multiplier=multiplier+1
+    if(multiplier>max_multi)
+      break;
   }
 
   #6. Determine s1 and s2 scores for each calculated cluster
@@ -285,10 +299,20 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     }
     colnames(final_image)<-NULL #Remove column names
 
-    #Compute S1
-    s1=exponential_decay_similarity(calculated_magnitude[index_pks],experimental_magnitude[index_pks],method=similarity_method)
+    #Compute S1 using all peaks
+    s1_all=exponential_decay_similarity(calculated_magnitude,experimental_magnitude,method=similarity_method)
     if(num_peaks==1)
       s1=1
+    #Compute S2 using only the peak matrix
+    if(length(index_pks)>1)
+    {
+      s1_pks=exponential_decay_similarity(calculated_magnitude[index_pks],experimental_magnitude[index_pks],method=similarity_method)
+    }
+    else
+      s1_pks=NA
+
+    #Compute S1
+    s1=max(s1_all,s1_pks,na.rm=T)
 
     #Compute S2 using all peaks
     image_correl=cor(final_image)
@@ -314,6 +338,8 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     a=calculated_mass[index_pks]
     b=experimental_mass[index_pks]
     s3=rMSIcleanup::exponential_decay_similarity(diff(a)*1e4/max(b),diff(b)*1e4/max(b),method=similarity_method,normalize = F)
+    if(length(index_pks)==1)
+      s3=1
     #s3=exponential_decay_similarity(calculated_mass[index_pks]/calculated_mass[index_pks],experimental_mass[index_pks]/calculated_mass[index_pks],method=similarity_method)
 
     #Choose which peaks belong in the ground truth (gt)
@@ -362,16 +388,28 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
       mass=NULL
 
       #Spectrum comparison plot
-      label = append(rep("",length(s2_individual)),round(s2_individual,2))
-      linetype=rep("solid",num_peaks*2)
-      linetype[index_full_spectrum+num_peaks]="dotted"
-      #linetype=append(rep("solid",length(s2_individual)),rep("dotted",length(s2_individual)))
+
+      if(plot_type=="poster")
+      {
+        label=rep("",2*length(s2_individual))
+        linetype=rep("solid",num_peaks*2)
+        legend_position="right"
+      }
+      else
+      {
+        label = append(rep("",length(s2_individual)),round(s2_individual,2))
+        linetype=rep("solid",num_peaks*2)
+        linetype[index_full_spectrum+num_peaks]="dotted"
+        legend_position="bottom"
+        #linetype=append(rep("solid",length(s2_individual)),rep("dotted",length(s2_individual)))
+      }
+
       plt_spectrum= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) +
                     geom_linerange(linetype=linetype) + geom_point() + geom_text(aes(label=label,vjust=0)) +
                     ggtitle(paste(cluster,"; S1:",round(s1,2),"; S2:",round(s2,2),"; S3:",round(s3,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))) +
                     xlab("m/z") + ylab("Normalized Intensity") +
                     scale_colour_discrete(name="",breaks=c("calculated_magnitude","experimental_magnitude"),labels=c("Calculated m/z","Experimental m/z"))+
-                    theme(legend.position="bottom")
+                    theme(legend.position=legend_position)
 
       #Image correlation plot
       plt_image_correl=levelplot(image_correl,at=seq(-1,1,length.out = 100))
@@ -411,33 +449,36 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
   not_gt=setdiff(pks$mass,gt)
   if(generate_pdf)
   {
-    #Print images of the ground truth
-    if(length(gt)>0)
+    if(include_summary)
     {
-      plts=list()
-      gt_index=match(gt,pks$mass)
-      for(i in 1:length(gt))
+      #Print images of the ground truth
+      if(length(gt)>0)
       {
-        plts=c(plts,list(ggplot_peak_image(pks,pks[[mag_of_interest]][,gt_index[i]],paste("m/z",round(gt[i],pkg_opt("round_digits")),"(",gt_cluster_names[i],")"),chosen=T)))
-        if(i%%length(page_layout)==0||i==length(gt))
+        plts=list()
+        gt_index=match(gt,pks$mass)
+        for(i in 1:length(gt))
         {
-          grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
-          plts=list()
+          plts=c(plts,list(ggplot_peak_image(pks,pks[[mag_of_interest]][,gt_index[i]],paste("m/z",round(gt[i],pkg_opt("round_digits")),"(",gt_cluster_names[i],")"),chosen=T)))
+          if(i%%length(page_layout)==0||i==length(gt))
+          {
+            grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
+            plts=list()
+          }
         }
       }
-    }
-    #Print images of the not ground truth
-    if(length(not_gt)>0)
-    {
-      plts=list()
-      not_gt_index=match(not_gt,pks$mass)
-      for(i in 1:length(not_gt))
+      #Print images of the not ground truth
+      if(length(not_gt)>0)
       {
-        plts=c(plts,list(ggplot_peak_image(pks,pks[[mag_of_interest]][,not_gt_index[i]],paste("m/z",round(not_gt[i],pkg_opt("round_digits"))),chosen=F)))
-        if(i%%length(page_layout)==0||i==length(not_gt))
+        plts=list()
+        not_gt_index=match(not_gt,pks$mass)
+        for(i in 1:length(not_gt))
         {
-          grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
-          plts=list()
+          plts=c(plts,list(ggplot_peak_image(pks,pks[[mag_of_interest]][,not_gt_index[i]],paste("m/z",round(not_gt[i],pkg_opt("round_digits"))),chosen=F)))
+          if(i%%length(page_layout)==0||i==length(not_gt))
+          {
+            grid.arrange(grobs=plts,nrow=nrow(page_layout),ncol=ncol(page_layout))
+            plts=list()
+          }
         }
       }
     }
@@ -474,6 +515,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     #Close pdf file
     dev.off()
   }
+
   return(results)
 }
 

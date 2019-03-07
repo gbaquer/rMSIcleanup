@@ -33,12 +33,12 @@
 run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1",
                             s1_threshold=0.80,s2_threshold=0.85, s3_threshold=0.7, similarity_method="euclidean",
                             MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
-                            mag_of_interest="intensity",normalization="None",
+                            mag_of_interest="intensity",normalization="TIC",
                             max_multi=10, add_list=NULL, sub_list=NULL,
-                            generate_pdf=T,default_page_layout=NULL) {
+                            generate_pdf=T,default_page_layout=NULL,include_summary=F) {
   #0. Prepare directories
   images_dir=paste(base_dir,"/images",sep="")
-  output_dir=paste(base_dir,"/output",sep="")
+  output_dir=paste(base_dir,"/output/",sep="")
   report_folder=generate_file_name("Experiment",extension = "",folder = output_dir)
 
   #1. Generate experiment metadata file
@@ -50,33 +50,138 @@ run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/
   subfolder_list=unlist(lapply(strsplit(pks_name_list,'/'),function(x) paste(x[1:length(x)-1],collapse="/")))
   num_files=length(pks_name_list)
 
+  results=list()
+
+  j=1
   for(i in 1:num_files)
   {
     pks_name=pks_name_list[i]
     subfolder=subfolder_list[i]
-
+    print("Start peak matrix:")
     print(pks_name)
     pks=rMSIproc::LoadPeakMatrix(pks_name)
 
-
+    pks_i=1
     for(name in pks$names)
     {
+      print("Start full_spectrum:")
       print(name)
       full_spectrum_name=paste(subfolder,"/",unlist(strsplit(name,".",fixed=T))[1],"-proc.tar",sep="")
       print(full_spectrum_name)
 
-      full_spectrum=rMSI::LoadMsiData(full_spectrum_name)
+      if(file.exists(full_spectrum_name))
+      {
+        full_spectrum=rMSI::LoadMsiData(full_spectrum_name)
 
-      #[Potential improvement: Use ... instead]
-      generate_gt(matrix_formula=matrix_formula,pks=pks,full_spectrum=full_spectrum,
-                  s1_threshold=s1_threshold,s2_threshold=s2_threshold, s3_threshold=s3_threshold, similarity_method=similarity_method,
-                  MALDI_resolution=MALDI_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
-                  mag_of_interest=mag_of_interest,normalization=normalization,
-                  max_multi=max_multi, add_list=add_list, sub_list=sub_list,
-                  generate_pdf=generate_pdf,default_page_layout=default_page_layout)
+        #[Potential improvement: Use ... instead]
+        results[[j]]= generate_gt(matrix_formula=matrix_formula,pks=pks,full_spectrum=full_spectrum,folder=output_dir,
+                    s1_threshold=s1_threshold,s2_threshold=s2_threshold, s3_threshold=s3_threshold, similarity_method=similarity_method,
+                    MALDI_resolution=MALDI_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
+                    mag_of_interest=mag_of_interest,normalization=normalization,
+                    max_multi=max_multi, add_list=add_list, sub_list=sub_list,
+                    generate_pdf=generate_pdf,default_page_layout=default_page_layout,include_summary=include_summary,pks_i = pks_i)
+        j=j+1
+      }
+      pks_i=pks_i+1
     }
   }
+
+  #Print results
+
+  #Open pdf
+  #Generate pdf name [pks$name_001]
+  pdf_file=generate_file_name("global_results",folder = output_dir)
+  #open pdf file
+  a4_width=8.27
+  a4_height=11.69
+  pdf(pdf_file,width=a4_height,height=a4_height)
+
+  labels=NULL
+  colors=NULL
+  s1_scores=NULL
+  s2_scores=NULL
+  s3_scores=NULL
+  i=1
+  truth=c("Ag1","Ag2","Ag3","Ag4","Ag5","Ag6","Ag7","Ag8","Ag9","Ag10","Ag1Na1")
+  for(r in results)
+  {
+    #Print calculated clusters
+    clusters=unique(r$patterns_out$cluster)
+    cluster_indices=match(clusters,r$patterns_out$cluster)
+    labels=append(labels,paste(i,"_",clusters,sep=""))
+
+
+    s1=r$patterns_out$s1_scores[cluster_indices]
+    s2=r$patterns_out$s2_scores[cluster_indices]
+    s3=r$patterns_out$s3_scores[cluster_indices]
+
+    is_na=which(is.na(s1)|is.na(s2)|is.na(s3))
+    col=is.element(clusters,truth)*1+2
+    col[is_na]=1
+    colors=append(colors,col)
+
+    s1[is.na(s1)]=0
+    s2[is.na(s2)]=0
+    s3[is.na(s3)]=0
+
+    s1_scores=append(s1_scores,s1)
+    s2_scores=append(s2_scores,s2)
+    s3_scores=append(s3_scores,s3)
+    i=i+1
+  }
+
+  #S1 vs. S2
+  plot(s1_scores,s2_scores,col=colors)
+  text(s1_scores, s2_scores, labels=labels, cex= 0.7, pos=3,col=colors)
+  legend("topleft",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
+  abline(v = s1_threshold)
+  abline(h = s2_threshold)
+
+  plot(s1_scores,s2_scores,xlim = c(s1_threshold,1),ylim=c(s2_threshold,1),col=colors)
+  text(s1_scores, s2_scores, labels=labels, cex= 0.7, pos=3,col=colors)
+  legend("topleft",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
+  abline(v = s1_threshold)
+  abline(h = s2_threshold)
+
+  #S1 vs. S3
+  plot(s1_scores,s3_scores,col=colors)
+  text(s1_scores, s3_scores, labels=labels, cex= 0.7, pos=3,col=colors)
+  legend("topleft",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
+  abline(v = s1_threshold)
+  abline(h = s3_threshold)
+
+  plot(s1_scores,s3_scores,xlim = c(s1_threshold,1),ylim=c(s3_threshold,1),col=colors)
+  text(s1_scores, s3_scores, labels=labels, cex= 0.7, pos=3,col=colors)
+  legend("topleft",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
+  abline(v = s1_threshold)
+  abline(h = s3_threshold)
+
+  #Close pdf file
+  dev.off()
 }
+#' Test Paraffin
+#'
+#' Test generate_gt with Paraffin
+#'
+#' @return None
+#'
+#'
+#' @export
+test_paraffin <- function () {
+  #Load images
+  pks_Paraffin <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Parafina Software Test 1/images/20160719_TOF_Au_TumorFrescVsDespar/mergeddata-peaks.zip")
+  full_spectrum_Paraffin1 <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Parafina Software Test 1/images/20160719_TOF_Au_TumorFrescVsDespar/20160719-TumorDespar-Au_CAL-proc.tar")
+  #full_spectrum_Paraffin2 <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Parafina Software Test 1/images/20160719_TOF_Au_TumorFrescVsDespar/20160719-TumorFresc-Au_CAL-proc.tar")
+
+  #Generate matrix formula
+  n=10:100
+  m=2*n+2
+  matrix_formula=paste("C",n,"H",m,sep="")
+
+  #Run generate gt
+  rMSIcleanup::generate_gt(matrix_formula,pks_Paraffin,full_spectrum_Paraffin1,generate_pdf = T,max_multi = 1, normalization="TIC")
+}
+
 
 #' Cross validation.
 #'
@@ -88,15 +193,20 @@ run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/
 #' @export
 cross_validation <- function () {
   #LOAD DATA
-  pks_Ag <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-mergeddata-peaks.zip")
+  #pks_Ag <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-mergeddata-peaks.zip")
+  pks_Ag <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1/images/20160801_TOF_AuAg_BrainCPF/mergeddata-peaks.zip")
   pks_Norharmane <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_norharmane/mergeddata-peaks.zip")
   pks_Au <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_matrix_au/peak_matrix_au/mergeddata-peaks.zip")
   pks_WO3 <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/kidney_auagwo3/postcode1/mergeddata-peaks.zip")
   pks_HCCA <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Lluc Images/postcode2/region7_calibrated/mergeddata-peaks.zip")
   pks_Garlic <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Garlic Alex/mergeddata-peaks.zip")
-
+  pks_Paraffin <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Parafina Software Test 1/images/20180125_TOF_Au_Ghrelina_Parafina/mergeddata-peaks.zip")
   #LOAD Full spectra
-  full_spectrum_Ag <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-CPF-proc.tar")
+  #full_spectrum_Ag <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-CPF-proc.tar")
+  full_spectrum_Ag <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1/images/20160801_TOF_AuAg_BrainCPF/CPF-Ag-proc.tar")
+  full_spectrum_Paraffin1 <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Parafina Software Test 1/images/20180125_TOF_Au_Ghrelina_Parafina/20180125_TOF_Au_Ghrelina-01C-proc.tar")
+  full_spectrum_Paraffin2 <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Parafina Software Test 1/images/20180125_TOF_Au_Ghrelina_Parafina/20180125_TOF_Au_Ghrelina-02A-proc.tar")
+  full_spectrum_HCCA <- rMSI::LoadMsiData("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Lluc Images/postcode2/region7_calibrated/18-3101_P18-011_Priscila_OvBov06-Fol_CHCA_Pos-proc.tar")
 
   #LOAD Ag ANNOTATIONS
   annotations_Ag=read.table("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/Ag.ref")

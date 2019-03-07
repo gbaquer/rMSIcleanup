@@ -414,7 +414,7 @@ is_within_scan_tol <- function(experimental_mass,calculated_mass,full_spectrum_m
 exponential_decay_similarity <- function(a,b,method="euclidian",normalize=T)
 {
   #Normalize
-  if(normalize)
+  if(normalize&&!is.infinite(max(a))&&!is.infinite(max(b)))
   {
     a=a/max(a)
     b=b/max(b)
@@ -426,11 +426,12 @@ exponential_decay_similarity <- function(a,b,method="euclidian",normalize=T)
   #Calculate similarity
   s=1/exp(d)
 
-  if(is.na(s))
-    s=0
 
   return(s)
 }
+
+# if(is.na(s))
+#   s=0
 
 #RANDOM CHUNCKS OF CODE
 # Cosine similarity two vectors
