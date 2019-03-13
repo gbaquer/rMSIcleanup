@@ -9,8 +9,10 @@ generate_gt(matrix_formula, pks, full_spectrum = NULL,
   s3_threshold = 0.7, similarity_method = "euclidean",
   MALDI_resolution = 20000, tol_mode = "ppm", tol_ppm = 2e-04,
   tol_scans = 4, mag_of_interest = "intensity",
-  normalization = "None", max_multi = 10, add_list = NULL,
-  sub_list = NULL, generate_pdf = F, default_page_layout = NULL)
+  normalization = "None", pks_i = 1, max_multi = 10,
+  add_list = NULL, sub_list = NULL, generate_pdf = F,
+  default_page_layout = NULL, plot_type = "debug",
+  include_summary = T)
 }
 \arguments{
 \item{matrix_formula}{String giving the chemical formula of the matrix in the enviPat notation}
@@ -41,6 +43,8 @@ generate_gt(matrix_formula, pks, full_spectrum = NULL,
 
 \item{normalization}{String indicating the normalization technique to use. Possible values: "None", "TIC","RMS", "MAX" or "AcqTic"}
 
+\item{pks_i}{Index of the peak matrix}
+
 \item{max_multi}{Maximum Cluster Multiplication. For each adduct -Adduct- it will generate a set of base formulas as follows: M+Adduct, 2M+Adduct, 3M+Adduct ... max_multi*M + Adduct}
 
 \item{add_list}{List of adducts to be added to the matrix formula in the format defined by enviPat. Example: c("H1","Na1","K1")}
@@ -50,6 +54,10 @@ generate_gt(matrix_formula, pks, full_spectrum = NULL,
 \item{generate_pdf}{Boolean indicating whether to generate a pdf report or not}
 
 \item{default_page_layout}{Page layout to be used in the pdf plotting.}
+
+\item{plot_type}{String indicating the type of plot desired. Can have two possible values "debug" or "poster"}
+
+\item{include_summary}{Boolean value indicating if the summary is to be included in the pd}
 }
 \value{
 Ground Truth: List of masses available in the image that correspond to the matrix.

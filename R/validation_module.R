@@ -53,7 +53,7 @@
 #'
 #' @export
 generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/",
-                         s1_threshold=0.80,s2_threshold=0.85, s3_threshold=0.7, similarity_method="euclidean",
+                         s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",
                          MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                          mag_of_interest="intensity",normalization="None",pks_i=1,
                          max_multi=10, add_list=NULL, sub_list=NULL,
@@ -65,20 +65,26 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
   #Page layout
   if(is.null(default_page_layout))
   {
-    if(plot_type=="poster")
-      default_page_layout=rbind(c(1,1,1,1),
-                              c(1,1,1,1),
-                              c(2,2,2,2),
-                              c(3,4,5,6),
-                              c(7,8,9,10),
-                              c(11,12,13,14))
-    else
-      default_page_layout=rbind(c(1,1,2,2),
-                                c(1,1,2,2),
-                                c(3,4,5,6),
-                                c(7,8,9,10),
-                                c(11,12,13,14),
-                                c(15,16,17,18))
+    # if(plot_type=="poster")
+    #   default_page_layout=rbind(c(1,1,1,1),
+    #                           c(1,1,1,1),
+    #                           c(2,2,2,2),
+    #                           c(3,4,5,6),
+    #                           c(7,8,9,10),
+    #                           c(11,12,13,14))
+    # else
+    #   default_page_layout=rbind(c(1,1,2,2),
+    #                             c(1,1,2,2),
+    #                             c(3,4,5,6),
+    #                             c(7,8,9,10),
+    #                             c(11,12,13,14),
+    #                             c(15,16,17,18))
+    default_page_layout=rbind(c(1,1,4,5,6),
+                              c(1,1,7,8,9),
+                              c(2,2,10,11,12),
+                              c(3,3,13,14,15),
+                              c(3,3,16,17,18),
+                              c(3,3,19,20,21))
 
   }
   #SECTION 0 :: Preprocessing
@@ -210,6 +216,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
 
   #6. Determine s1 and s2 scores for each calculated cluster
   mean_image=apply(pks[[mag_of_interest]],2,mean)
+  sd_image=apply(pks[[mag_of_interest]],2,sd)/mean_image
   clusters=unique(patterns_out$cluster)
 
   #Initialize output results list
@@ -237,10 +244,12 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     calculated_mass=patterns_out$mass[calculated_index]
     calculated_magnitude=patterns_out[[mag_of_interest]][calculated_index]
 
+
     # Experimental cluster
     experimental_index=get_closest_peak(calculated_mass,pks$mass)
     experimental_mass=pks$mass[experimental_index]
     experimental_magnitude=mean_image[experimental_index]
+    experimental_sd=sd_image[experimental_index]
 
     # Number of peaks in cluster
     num_peaks=length(calculated_index)
@@ -257,7 +266,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
       index_pks=which(unlist(lapply(1:num_peaks,function(i)is_within_scan_tol(experimental_mass[i],calculated_mass[i],full_spectrum$mass,tol_scans))))#Peaks to be taken from the peak matrix
       index_full_spectrum=setdiff(1:num_peaks,index_pks) #Peaks to be taken from the full spectrum
     }
-
+    rel_error[index_full_spectrum]=0
     #Generate images for each peak in the cluster
     final_image=NULL
     for(i in 1:num_peaks)
@@ -273,7 +282,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
           else
           {
             col=which.min(abs(full_spectrum$mass-mass))
-            cols=(col-tol_scans):(col+tol_scans)
+            cols=(col-tol_scans/10):(col+tol_scans/10)
             data=rMSI::loadImageSliceFromCols(full_spectrum,cols)
           }
 
@@ -299,52 +308,221 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     }
     colnames(final_image)<-NULL #Remove column names
 
-    #Compute S1 using all peaks
-    s1_all=exponential_decay_similarity(calculated_magnitude,experimental_magnitude,method=similarity_method)
-    if(num_peaks==1)
-      s1=1
-    #Compute S2 using only the peak matrix
-    if(length(index_pks)>1)
-    {
-      s1_pks=exponential_decay_similarity(calculated_magnitude[index_pks],experimental_magnitude[index_pks],method=similarity_method)
-    }
-    else
-      s1_pks=NA
-
-    #Compute S1
-    s1=max(s1_all,s1_pks,na.rm=T)
-
-    #Compute S2 using all peaks
     image_correl=cor(final_image)
     image_correl[which(is.na(image_correl))]=0
-    s2_individual = apply(image_correl,2,weighted.mean,w=calculated_magnitude)
-    s2_individual[which(is.na(s2_individual))]=0
-    s2_all=weighted.mean(s2_individual,calculated_magnitude)
 
-    #Compute S2 using only the peak matrix
-    if(length(index_pks)>1)
+    #Compute similarity scores using all peaks in the cluster
+    s1=compute_s1(calculated_magnitude,experimental_magnitude,similarity_method)
+    s2=compute_s2(calculated_magnitude,image_correl)
+    s3=compute_s3(calculated_mass[index_pks],experimental_mass[index_pks],similarity_method)
+
+    #Compute similarity scores for each possible merged clusters
+    index_selected=1:num_peaks
+    s1_clusters=NULL
+    s2_clusters=NULL
+    s3_clusters=NULL
+
+    a=kmeans(image_correl,centers=min(2,nrow(image_correl)-1))
+    b=kmeans(rel_error,centers=min(2,nrow(image_correl)-1,length(unique(rel_error))))
+    ion_clusters=paste(a$clus,b$clus)
+
+    classification_record=rbind(rep(1,num_peaks))
+    classes_list=rbind(c(1,s1,s2,s3))
+    if(s1<s1_threshold|s2<s2_threshold|s3<s3_threshold)
     {
-      s2_individual_pks = apply(image_correl[index_pks,index_pks],2,weighted.mean,w=calculated_magnitude[index_pks])
-      s2_individual_pks[which(is.na(s2_individual_pks))]=0
-      s2_pks=weighted.mean(s2_individual_pks,calculated_magnitude[index_pks])
+      found=F
+      while(!found & any(!is.na(classification_record[1,])))
+      {
+        parent_classes=classification_record[1,]
+        child_classes=rep(NA,num_peaks)
+        for(parent_class in unique(parent_classes[which(!is.na(parent_classes))]))
+        {
+          index_class=which(parent_classes==parent_class)
+          if(length(index_class)>2 & NROW(unique(image_correl[index_class,index_class]))>2 & length(intersect(index_class,index_pks))>0)
+            child_classes[index_class]=max(parent_classes,na.rm = T)+(parent_class-min(parent_classes,na.rm = T))+kmeans(image_correl[index_class,index_class],centers=2)$clus
+        }
+
+        classification_record=rbind(child_classes,classification_record)
+
+        # child_classes=child_classes[which(!is.na(child_classes))]
+        for(child_class in unique(child_classes[which(!is.na(child_classes))]))
+        {
+          index_class=which(child_classes==child_class)
+          index_not_class=which(child_classes!=child_class)
+          #Skip if cluster only contains 1 peak
+          #Skip if other cluster peaks are not higher than 90% of the theoretical
+          # if((length(index_class)<=1) | (experimental_magnitude[index_not_class]/max(experimental_magnitude[index_class])<0.9*calculated_magnitude[index_not_class]))
+          if((length(index_class)<=1))
+          {
+            #classification_record[1,index_class]=NA
+            next
+          }
+          #Compute scores
+          s1_tmp=compute_s1(calculated_magnitude[index_class],experimental_magnitude[index_class],similarity_method)
+          s2_tmp=compute_s2(calculated_magnitude[index_class],image_correl[index_class,index_class])
+          s3_tmp=compute_s3(calculated_mass[intersect(index_pks,index_class)],experimental_mass[intersect(index_pks,index_class)],similarity_method)
+
+          #Strore results
+          classes_list=rbind(classes_list,c(child_class,s1_tmp,s2_tmp,s3_tmp))
+          #Finish if similarity conditions met
+          if(s1_tmp>s1_threshold & s2_tmp>s2_threshold & s3_tmp>s3_threshold)
+          {
+            s1=s1_tmp
+            s2=s2_tmp
+            s3=s3_tmp
+            index_selected=index_class
+            found=T
+            break
+          }
+          # #Update pareto front
+          # if((s1_tmp>=s1) & (s2_tmp>=s2) & (s3_tmp>=s3))
+          # {
+          #   s1=s1_tmp
+          #   s2=s2_tmp
+          #   s3=s3_tmp
+          #   index_selected=index_class
+          # }
+        }
+      }
+
+      # s1_clusters=rep(0,length(a$size))
+      # s2_clusters=rep(0,length(a$size))
+      # s3_clusters=rep(0,length(a$size))
+      # for(i in a$clus)
+      # {
+      #   index_cluster=which(a$clus==i)
+      #   if(length(index_cluster)>1)
+      #   {
+      #     s1_clusters[i]=compute_s1(calculated_magnitude[index_cluster],experimental_magnitude[index_cluster],similarity_method)
+      #     s2_clusters[i]=compute_s2(calculated_magnitude[index_cluster],image_correl[index_cluster,index_cluster])
+      #     s3_clusters[i]=compute_s3(calculated_mass[intersect(index_pks,index_cluster)],experimental_mass[intersect(index_pks,index_cluster)],similarity_method)
+      #   }
+      #   if(s1_clusters[i]>s1_threshold&s2_clusters[i]>s2_threshold&s3_clusters[i]>s3_threshold)
+      #   {
+      #     s1=s1_clusters[i]
+      #     s2=s2_clusters[i]
+      #     s3=s3_clusters[i]
+      #     index_selected=index_cluster
+      #   }
+      # }
+      pareto_front=NA
+      # pareto_front=get_pareto_front(append(s1,s1_clusters),append(s2,s2_clusters),append(s3,s3_clusters))
+      # s1=pareto_front[1,1]
+      # s2=pareto_front[1,2]
+      # s3=pareto_front[1,3]
+      # if(pareto_front)
+      #
+      # selected_row=which(pareto_front[,1]>s1_threshold & pareto_front[,2]>s2_threshold & pareto_front[,3]>s3_threshold)[1]
+      #
+      # selected_row=as.numeric(row.names(r))[selected_row]
     }
-    else
-      s2_pks=NA
 
-    #Compute S2
-    s2=max(s2_all,s2_pks,na.rm=T)
-
-    #Compute S3
-    a=calculated_mass[index_pks]
-    b=experimental_mass[index_pks]
-    s3=rMSIcleanup::exponential_decay_similarity(diff(a)*1e4/max(b),diff(b)*1e4/max(b),method=similarity_method,normalize = F)
-    if(length(index_pks)==1)
-      s3=1
+    # #Compute S1 using all peaks
+    # s1_all=exponential_decay_similarity(calculated_magnitude,experimental_magnitude,method=similarity_method)
+    # if(num_peaks==1)
+    #   s1=1
+    # #Compute S1 using only the peak matrix
+    # if(length(index_pks)>1)
+    # {
+    #   s1_pks=exponential_decay_similarity(calculated_magnitude[index_pks],experimental_magnitude[index_pks],method=similarity_method)
+    # }
+    # else
+    #   s1_pks=NA
+    #
+    # #Compute S1
+    # s1=max(s1_all,s1_pks,na.rm=T)
+    #
+    # #Compute S2 using all peaks
+    # image_correl=cor(final_image)
+    # image_correl[which(is.na(image_correl))]=0
+    # s2_individual = apply(image_correl,2,weighted.mean,w=calculated_magnitude)
+    # s2_individual[which(is.na(s2_individual))]=0
+    # s2_all=weighted.mean(s2_individual,calculated_magnitude)
+    #
+    # #Compute S2 using only the peak matrix
+    # if(length(index_pks)>1)
+    # {
+    #   s2_individual_pks = apply(image_correl[index_pks,index_pks],2,weighted.mean,w=calculated_magnitude[index_pks])
+    #   s2_individual_pks[which(is.na(s2_individual_pks))]=0
+    #   s2_pks=weighted.mean(s2_individual_pks,calculated_magnitude[index_pks])
+    # }
+    # else
+    #   s2_pks=NA
+    #
+    # #Compute S2
+    # s2=max(s2_all,s2_pks,na.rm=T)
+    #
+    # #Compute S3
+    # a=calculated_mass[index_pks]
+    # b=experimental_mass[index_pks]
+    # s3=rMSIcleanup::exponential_decay_similarity(diff(a)*1e4/max(b),diff(b)*1e4/max(b),method=similarity_method,normalize = F)
+    # if(length(index_pks)==1)
+    # {
+    #   s3=1
+    # }
     #s3=exponential_decay_similarity(calculated_mass[index_pks]/calculated_mass[index_pks],experimental_mass[index_pks]/calculated_mass[index_pks],method=similarity_method)
+
+    #Check if there is an overlap
+
+    # if(s1<s1_threshold & s2<s2_threshold)
+    # {
+    #   ion_clusters=kmeans(image_correl,centers=min(2,nrow(image_correl)-1))$clus
+    #   #Recompute similarity scores
+    #   for(i in ion_clusters$clus)
+    #   {
+    #     ions=which(ion_clusters$clus==i)
+    #     num_peaks_tmp=length(ions)
+    #     #Compute S1 using all peaks
+    #     s1_all=exponential_decay_similarity(calculated_magnitude[ions],experimental_magnitude[ions],method=similarity_method)
+    #     if(num_peaks_tmp==1)
+    #       s1=1
+    #     #Compute S1 using only the peak matrix
+    #     if(length(index_pks)>1)
+    #     {
+    #       s1_pks=exponential_decay_similarity(calculated_magnitude[intersect(index_pks,ions)],experimental_magnitude[intersect(index_pks,ions)],method=similarity_method)
+    #     }
+    #     else
+    #       s1_pks=NA
+    #
+    #     #Compute S1
+    #     s1=max(s1_all,s1_pks,na.rm=T)
+    #
+    #     #Compute S2 using all peaks
+    #     s2_individual_tmp = apply(image_correl[ions,ions],2,weighted.mean,w=calculated_magnitude[ions])
+    #     s2_individual_tmp[which(is.na(s2_individual_tmp))]=0
+    #     s2_all=weighted.mean(s2_individual_tmp,calculated_magnitude[ions])
+    #
+    #     #Compute S2 using only the peak matrix
+    #     if(length(index_pks)>1)
+    #     {
+    #       s2_individual_pks_tmp = apply(image_correl[intersect(index_pks,ions),intersect(index_pks,ions)],2,weighted.mean,w=calculated_magnitude[intersect(index_pks,ions)])
+    #       s2_individual_pks_tmp[which(is.na(s2_individual_pks_tmp))]=0
+    #       s2_pks=weighted.mean(s2_individual_pks_tmp,calculated_magnitude[intersect(index_pks,ions)])
+    #     }
+    #     else
+    #       s2_pks=NA
+    #
+    #     #Compute S2
+    #     s2=max(s2_all,s2_pks,na.rm=T)
+    #
+    #     #Compute S3
+    #     a=calculated_mass[intersect(index_pks,ions)]
+    #     b=experimental_mass[intersect(index_pks,ions)]
+    #     s3=rMSIcleanup::exponential_decay_similarity(diff(a)*1e4/max(b),diff(b)*1e4/max(b),method=similarity_method,normalize = F)
+    #     if(length(intersect(index_pks,ions))==1)
+    #       s3=1
+    #
+    #     if(s1>s1_threshold&s2>s2_threshold&s3>s3_threshold)
+    #     {
+    #       break;
+    #     }
+    #   }
+    # }
+
 
     #Choose which peaks belong in the ground truth (gt)
     chosen=rep(F,num_peaks)
-    chosen[index_pks]=(!is.na(s1)&!is.na(s2)&!is.na(s3))&(s1>s1_threshold & s2>s2_threshold & s3>s3_threshold)
+    chosen[intersect(index_pks,index_selected)]=(!is.na(s1)&!is.na(s2)&!is.na(s3))&(s1>s1_threshold & s2>s2_threshold & s3>s3_threshold)
 
 
     #Adjust magnitude in the NA mode for plotting
@@ -371,54 +549,83 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     {
       #Print progress to console
       print(paste(cluster,s1,s2,s3))
+      # print(classification_record)
+      # print(classes_list)
+      # print(index_selected)
+      # print(table(a$cluster,b$cluster))
+      # print(rbind(s1_clusters,s2_clusters,s3_clusters))
+      # print(pareto_front)
 
       #Normalize
       if(sum(!is.na(experimental_magnitude))!=0 && max(experimental_magnitude,na.rm=T)!=0)
-        norm_image_intensity=experimental_magnitude/max(experimental_magnitude,na.rm=T)
+        norm_experimental_magnitude=experimental_magnitude/max(experimental_magnitude,na.rm=T)
       else
-        norm_image_intensity=experimental_magnitude
+        norm_experimental_magnitude=experimental_magnitude
+
+      if(sum(!is.na(experimental_sd))!=0 && max(experimental_sd,na.rm=T)!=0)
+        norm_experimental_sd=experimental_sd/max(experimental_sd,na.rm=T)
+      else
+        norm_experimental_sd=experimental_sd
+
       if(max(calculated_magnitude)!=0)
         calculated_magnitude=calculated_magnitude/max(calculated_magnitude)
 
       #Prepare melted dataframe
-      df=data.frame(mass=calculated_mass,calculated_magnitude=calculated_magnitude,experimental_magnitude=norm_image_intensity)
-      melted_df=melt(df, id.vars="mass",measure.vars=c("calculated_magnitude","experimental_magnitude"))
+      df=data.frame(mass=calculated_mass,calculated_magnitude=calculated_magnitude,experimental_magnitude=norm_experimental_magnitude,experimental_sd=norm_experimental_sd)
+      vars=c("calculated_magnitude","experimental_magnitude")
+      vars_label=c("Calculated","Experimental Mean")
+      melted_df=melt(df, id.vars="mass",measure.vars=vars)
       value=NULL
       variable=NULL
       mass=NULL
 
       #Spectrum comparison plot
 
+      l=num_peaks*length(vars)
       if(plot_type=="poster")
       {
-        label=rep("",2*length(s2_individual))
-        linetype=rep("solid",num_peaks*2)
+        label=rep("",l)
+        linetype=rep("solid",l)
         legend_position="right"
       }
       else
       {
-        label = append(rep("",length(s2_individual)),round(s2_individual,2))
-        linetype=rep("solid",num_peaks*2)
+        label=rep("",l)
+        label[(num_peaks+1):(num_peaks*2)]=ion_clusters
+        linetype=rep("solid",l)
         linetype[index_full_spectrum+num_peaks]="dotted"
         legend_position="bottom"
         #linetype=append(rep("solid",length(s2_individual)),rep("dotted",length(s2_individual)))
       }
+      global_title=paste(cluster,"; S1:",round(s1,2),"; S2:",round(s2,2),"; S3:",round(s3,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))
 
       plt_spectrum= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) +
                     geom_linerange(linetype=linetype) + geom_point() + geom_text(aes(label=label,vjust=0)) +
-                    ggtitle(paste(cluster,"; S1:",round(s1,2),"; S2:",round(s2,2),"; S3:",round(s3,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))) +
+        # ggtitle(paste(cluster,"; S1:",round(s1,2),"; S2:",round(s2,2),"; S3:",round(s3,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))) +
                     xlab("m/z") + ylab("Normalized Intensity") +
-                    scale_colour_discrete(name="",breaks=c("calculated_magnitude","experimental_magnitude"),labels=c("Calculated m/z","Experimental m/z"))+
+                    scale_colour_discrete(name="",breaks=vars,labels=vars_label)+
                     theme(legend.position=legend_position)
 
       #Image correlation plot
       plt_image_correl=levelplot(image_correl,at=seq(-1,1,length.out = 100))
-      plts=list(plt_spectrum,plt_image_correl)
+
+      #Recursive exploration plot
+      text=""
+      text=add_entry(text,"EXPLORATION MAP")
+      text=paste(text,paste(apply(classification_record,1,paste,collapse=" "),collapse="\n"),"\n")
+      text=add_entry(text,"SIMILARITY SCORES")
+      text=paste(text,paste(apply(round(classes_list,2),1,paste,collapse=" "),collapse="\n"),"\n")
+
+      plt_recursive_exploration=plot_text(text,size = 3)
+
+
+      #Create a list with all the plots
+      plts=list(plt_spectrum,plt_image_correl,plt_recursive_exploration)
 
 
       #Print cluster images
       page_layout=default_page_layout
-      offset=match(3,c(t(page_layout)))-1
+      offset=match(4,c(t(page_layout)))-1
       for(i in 1:num_peaks)
       {
         title=paste("m/z",round(calculated_mass[i],pkg_opt("round_digits")))
@@ -429,7 +636,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
         plts=c(plts,list(ggplot_peak_image(pks,final_image[,i],title,is.na(experimental_magnitude[i]),chosen[i],is.element(i,index_pks))))
         if((i+offset)%%length(page_layout)==0||i==num_peaks)
         {
-          grid.arrange(grobs=plts,layout_matrix=page_layout)
+          grid.arrange(grobs=plts,layout_matrix=page_layout,top=global_title)
           plts=list()
           offset=0
           page_layout=matrix(1:length(page_layout), ncol = 4)
@@ -520,6 +727,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
 }
 
 
+
 #' Compute scores
 #'
 #' Returns several scores for performance assessment of a given binary classification result.
@@ -569,4 +777,107 @@ compute_scores <- function (gt,pos,neg) {
     print(paste("F1 score:",scores$f1,"BS:",scores$b))
   }
   return(scores)
+}
+
+
+#' Compute S1
+#'
+#' Returns the spectral similarity score (S1)
+#'
+#' @param calculated_magnitude Calculated magnitude vector
+#' @param experimental_magnitude Experimental magnitude vector
+#' @param similarity_method Similarity method to be used
+#'
+#' @return Spectral similarity score S1
+#'
+#'
+#' @export
+compute_s1 <- function (calculated_magnitude,experimental_magnitude,similarity_method) {
+  calculated_magnitude=calculated_magnitude/max(calculated_magnitude)
+  experimental_magnitude=experimental_magnitude/max(experimental_magnitude)
+  #Compute S1 using all peaks
+  s1=exponential_decay_similarity(calculated_magnitude,experimental_magnitude,method=similarity_method)
+  # if(num_peaks==1)
+  #   s1=1
+  # #Compute S1 using only the peak matrix
+  # if(length(index_pks)>1)
+  # {
+  #   s1_pks=exponential_decay_similarity(calculated_magnitude[index_pks],experimental_magnitude[index_pks],method=similarity_method)
+  # }
+  # else
+  #   s1_pks=NA
+
+  #Compute S1
+  # s1=max(s1_all,s1_pks,na.rm=T)
+
+  #Check if there is an overlap
+  # ion_clusters=kmeans(image_correl,centers=min(2,nrow(image_correl)-1))$clus
+  if(is.na(s1))
+    s1=0
+  return(s1)
+}
+
+#' Compute S2
+#'
+#' Returns the intra-cluster morphological similarity score (S2)
+#'
+#' @param calculated_magnitude Calculated magnitude vector
+#' @param image_correl Image correlation matrix of the experimental magnitude vector
+#'
+#' @return Spectral similarity score S2
+#'
+#'
+#' @export
+compute_s2 <- function (calculated_magnitude,image_correl) {
+  #Compute S2 using all peaks
+  s2_individual = apply(image_correl,2,weighted.mean,w=calculated_magnitude)
+  s2_individual[which(is.na(s2_individual))]=0
+  s2=weighted.mean(s2_individual,calculated_magnitude)
+
+  # #Compute S2 using only the peak matrix
+  # if(length(index_pks)>1)
+  # {
+  #   s2_individual_pks = apply(image_correl[index_pks,index_pks],2,weighted.mean,w=calculated_magnitude[index_pks])
+  #   s2_individual_pks[which(is.na(s2_individual_pks))]=0
+  #   s2_pks=weighted.mean(s2_individual_pks,calculated_magnitude[index_pks])
+  # }
+  # else
+  #   s2_pks=NA
+  #
+  # #Compute S2
+  # s2=max(s2_all,s2_pks,na.rm=T)
+  if(is.na(s2))
+    s2=0
+  return(s2)
+}
+
+#' Compute S3
+#'
+#' Returns the mass tolerance similarity score (S3)
+#'
+#' @param calculated_mass Calculated mass vector
+#' @param experimental_mass Experimental mass vector
+#' @param similarity_method Similarity method to be used
+#'
+#' @return Mass tolerance score S3
+#'
+#'
+#' @export
+compute_s3 <- function (calculated_mass,experimental_mass,similarity_method) {
+  #Compute S3
+  norm_factor=max(experimental_mass)
+  s3=exponential_decay_similarity(diff(calculated_mass)*1e4/norm_factor,diff(experimental_mass)*1e4/norm_factor,method=similarity_method,normalize = F)
+  if(length(calculated_mass)==1)
+  {
+    s3=1
+  }
+  #s3=exponential_decay_similarity(calculated_mass[index_pks]/calculated_mass[index_pks],experimental_mass[index_pks]/calculated_mass[index_pks],method=similarity_method)
+
+  #Check if there is an overlap
+  # ion_clusters=kmeans(image_correl,centers=min(2,nrow(image_correl)-1))$clus
+  if(is.na(s3))
+    s3=0
+
+  return(s3)
+
 }

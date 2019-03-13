@@ -9,9 +9,10 @@ run_experiment(matrix_formula,
   s1_threshold = 0.8, s2_threshold = 0.85, s3_threshold = 0.7,
   similarity_method = "euclidean", MALDI_resolution = 20000,
   tol_mode = "ppm", tol_ppm = 2e-04, tol_scans = 4,
-  mag_of_interest = "intensity", normalization = "None",
+  mag_of_interest = "intensity", normalization = "TIC",
   max_multi = 10, add_list = NULL, sub_list = NULL,
-  generate_pdf = T, default_page_layout = NULL)
+  generate_pdf = T, default_page_layout = NULL, include_summary = F,
+  dataset_indices = NULL)
 }
 \arguments{
 \item{matrix_formula}{String giving the chemical formula of the matrix in the enviPat notation}
@@ -47,6 +48,8 @@ run_experiment(matrix_formula,
 \item{generate_pdf}{Boolean indicating whether to generate a pdf report or not}
 
 \item{default_page_layout}{Page layout to be used in the pdf plotting.}
+
+\item{include_summary}{Boolean value indicating if the summary is to be included in the pd}
 }
 \value{
 None

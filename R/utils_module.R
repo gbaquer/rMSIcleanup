@@ -399,6 +399,24 @@ is_within_scan_tol <- function(experimental_mass,calculated_mass,full_spectrum_m
   return((experimental_mass>min(mass_range))&(experimental_mass<max(mass_range)))
 }
 
+#' Pareto Front
+#'
+#' Returns the pareto front for a set of three dimensional points
+#'
+#' @param x Vector of first coordinates
+#' @param y Vector of second coordinates
+#' @param z Vector of third coordinates
+#'
+#' @return Boolean value indicating whether the experimental mass is within "tol_scans" of the calculated_mass
+get_pareto_front <- function(x,y,z)
+{
+  d = data.frame(x,y,z)
+  D = d[order(d$x,d$y,d$z,decreasing=T),]
+  front = D[union(which(!duplicated(cummax(D$y))),which(!duplicated(cummax(D$z)))),]
+
+  return(as.matrix(front))
+}
+
 # SIMILARITY MEASURES
 
 #' Exponential Decay Similarity

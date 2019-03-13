@@ -26,20 +26,22 @@
 #'
 #' @return None
 #' @param base_dir Base directory where the images are stored and the output reports should be stored
+#' @param dataset_indices Vector containing the indices of the datasets to be used
 #' @inheritParams generate_gt
 #'
 #'
 #' @export
 run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1",
-                            s1_threshold=0.80,s2_threshold=0.85, s3_threshold=0.7, similarity_method="euclidean",
+                            s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",
                             MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                             mag_of_interest="intensity",normalization="TIC",
                             max_multi=10, add_list=NULL, sub_list=NULL,
-                            generate_pdf=T,default_page_layout=NULL,include_summary=F) {
+                            generate_pdf=T,default_page_layout=NULL,include_summary=F,dataset_indices=NULL) {
   #0. Prepare directories
   images_dir=paste(base_dir,"/images",sep="")
-  output_dir=paste(base_dir,"/output/",sep="")
-  report_folder=generate_file_name("Experiment",extension = "",folder = output_dir)
+  output_dir=paste(base_dir,"/output",sep="")
+  experiment_dir=paste(generate_file_name("/output",extension = "",folder = output_dir),"/",sep="")
+  dir.create(experiment_dir)
 
   #1. Generate experiment metadata file
   #[PENDING]
@@ -50,47 +52,88 @@ run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/
   subfolder_list=unlist(lapply(strsplit(pks_name_list,'/'),function(x) paste(x[1:length(x)-1],collapse="/")))
   num_files=length(pks_name_list)
 
-  results=list()
+  results=list(meta=list(s1_threshold=s1_threshold,s2_threshold=s2_threshold,s3_threshold=s3_threshold),data=list())
 
   j=1
   for(i in 1:num_files)
   {
-    pks_name=pks_name_list[i]
-    subfolder=subfolder_list[i]
-    print("Start peak matrix:")
-    print(pks_name)
-    pks=rMSIproc::LoadPeakMatrix(pks_name)
-
-    pks_i=1
-    for(name in pks$names)
+    if(is.null(dataset_indices) || is.element(i,dataset_indices))
     {
-      print("Start full_spectrum:")
-      print(name)
-      full_spectrum_name=paste(subfolder,"/",unlist(strsplit(name,".",fixed=T))[1],"-proc.tar",sep="")
-      print(full_spectrum_name)
+      pks_name=pks_name_list[i]
+      subfolder=subfolder_list[i]
+      print("Start peak matrix:")
+      print(pks_name)
+      pks=rMSIproc::LoadPeakMatrix(pks_name)
 
-      if(file.exists(full_spectrum_name))
+      pks_i=1
+      for(name in pks$names)
       {
-        full_spectrum=rMSI::LoadMsiData(full_spectrum_name)
+        print("Start full_spectrum:")
+        print(name)
+        full_spectrum_name=paste(subfolder,"/",unlist(strsplit(name,".",fixed=T))[1],"-proc.tar",sep="")
+        print(full_spectrum_name)
 
-        #[Potential improvement: Use ... instead]
-        results[[j]]= generate_gt(matrix_formula=matrix_formula,pks=pks,full_spectrum=full_spectrum,folder=output_dir,
-                    s1_threshold=s1_threshold,s2_threshold=s2_threshold, s3_threshold=s3_threshold, similarity_method=similarity_method,
-                    MALDI_resolution=MALDI_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
-                    mag_of_interest=mag_of_interest,normalization=normalization,
-                    max_multi=max_multi, add_list=add_list, sub_list=sub_list,
-                    generate_pdf=generate_pdf,default_page_layout=default_page_layout,include_summary=include_summary,pks_i = pks_i)
-        j=j+1
+        if(file.exists(full_spectrum_name))
+        {
+          full_spectrum=rMSI::LoadMsiData(full_spectrum_name)
+
+          #[Potential improvement: Use ... instead]
+          results$data[[j]]= generate_gt(matrix_formula=matrix_formula,pks=pks,full_spectrum=full_spectrum,folder=experiment_dir,
+                      s1_threshold=s1_threshold,s2_threshold=s2_threshold, s3_threshold=s3_threshold, similarity_method=similarity_method,
+                      MALDI_resolution=MALDI_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
+                      mag_of_interest=mag_of_interest,normalization=normalization,
+                      max_multi=max_multi, add_list=add_list, sub_list=sub_list,
+                      generate_pdf=generate_pdf,default_page_layout=default_page_layout,include_summary=include_summary,pks_i = pks_i)
+          j=j+1
+        }
+        pks_i=pks_i+1
       }
-      pks_i=pks_i+1
     }
   }
 
-  #Print results
+  #Store results
+  results_file=generate_file_name("global_results",folder = experiment_dir,extension = ".rds")
+  saveRDS(results, results_file)
 
+  #Print results
+  #generate_pdf(results,experiment_dir)
+
+}
+
+#' Generate PDF report
+#'
+#' Generate PDF report
+#'
+#'
+#' @return None
+#'
+#'
+#' @export
+generate_pdf_from_file <- function () {
+  base_dir="C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1"
+  output_dir=paste(base_dir,"/output",sep="")
+  experiment_dir=paste(generate_file_name("/output",extension = "",folder = output_dir),"",sep="")
+  #Load Results
+  results_path = file.choose()
+  results = readRDS(results_path)
+  #Print Results
+  generate_pdf(results,experiment_dir)
+}
+
+#' Generate PDF report
+#'
+#' Generate PDF report
+#'
+#' @param results Results matrix
+#'
+#' @return None
+#'
+#'
+#' @export
+generate_pdf <- function (results,experiment_dir) {
   #Open pdf
   #Generate pdf name [pks$name_001]
-  pdf_file=generate_file_name("global_results",folder = output_dir)
+  pdf_file=generate_file_name("global_results",folder = experiment_dir)
   #open pdf file
   a4_width=8.27
   a4_height=11.69
@@ -103,7 +146,7 @@ run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/
   s3_scores=NULL
   i=1
   truth=c("Ag1","Ag2","Ag3","Ag4","Ag5","Ag6","Ag7","Ag8","Ag9","Ag10","Ag1Na1")
-  for(r in results)
+  for(r in results$data)
   {
     #Print calculated clusters
     clusters=unique(r$patterns_out$cluster)
@@ -130,31 +173,37 @@ run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/
     i=i+1
   }
 
+  #ROC AUC
+  plot(s1_scores,s2_scores,col=2)
+  plot(0:1,0:1,col=1)
+  text(s1_scores, s2_scores, labels=labels, cex= 0.7, pos=3,col=colors)
+  legend("bottomright",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
+
   #S1 vs. S2
   plot(s1_scores,s2_scores,col=colors)
   text(s1_scores, s2_scores, labels=labels, cex= 0.7, pos=3,col=colors)
   legend("topleft",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
-  abline(v = s1_threshold)
-  abline(h = s2_threshold)
+  abline(v = results$meta$s1_threshold)
+  abline(h = results$meta$s2_threshold)
 
-  plot(s1_scores,s2_scores,xlim = c(s1_threshold,1),ylim=c(s2_threshold,1),col=colors)
+  plot(s1_scores,s2_scores,xlim = c(results$meta$s1_threshold,1),ylim=c(results$meta$s2_threshold,1),col=colors)
   text(s1_scores, s2_scores, labels=labels, cex= 0.7, pos=3,col=colors)
   legend("topleft",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
-  abline(v = s1_threshold)
-  abline(h = s2_threshold)
+  abline(v = results$meta$s1_threshold)
+  abline(h = results$meta$s2_threshold)
 
   #S1 vs. S3
   plot(s1_scores,s3_scores,col=colors)
   text(s1_scores, s3_scores, labels=labels, cex= 0.7, pos=3,col=colors)
   legend("topleft",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
-  abline(v = s1_threshold)
-  abline(h = s3_threshold)
+  abline(v = results$meta$s1_threshold)
+  abline(h = results$meta$s3_threshold)
 
-  plot(s1_scores,s3_scores,xlim = c(s1_threshold,1),ylim=c(s3_threshold,1),col=colors)
+  plot(s1_scores,s3_scores,xlim = c(results$meta$s1_threshold,1),ylim=c(results$meta$s3_threshold,1),col=colors)
   text(s1_scores, s3_scores, labels=labels, cex= 0.7, pos=3,col=colors)
   legend("topleft",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
-  abline(v = s1_threshold)
-  abline(h = s3_threshold)
+  abline(v = results$meta$s1_threshold)
+  abline(h = results$meta$s3_threshold)
 
   #Close pdf file
   dev.off()
