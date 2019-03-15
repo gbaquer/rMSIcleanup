@@ -36,7 +36,7 @@ run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/
                             MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                             mag_of_interest="intensity",normalization="TIC",
                             max_multi=10, add_list=NULL, sub_list=NULL,
-                            generate_pdf=T,default_page_layout=NULL,include_summary=F,dataset_indices=NULL) {
+                            save_results=T,generate_pdf=T,default_page_layout=NULL,include_summary=F,dataset_indices=NULL) {
   #0. Prepare directories
   images_dir=paste(base_dir,"/images",sep="")
   output_dir=paste(base_dir,"/output",sep="")
@@ -92,11 +92,14 @@ run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/
   }
 
   #Store results
-  results_file=generate_file_name("global_results",folder = experiment_dir,extension = ".rds")
-  saveRDS(results, results_file)
+  if(save_results)
+  {
+    results_file=generate_file_name("global_results",folder = experiment_dir,extension = ".rds")
+    saveRDS(results, results_file)
+  }
 
   #Print results
-  #generate_pdf(results,experiment_dir)
+  generate_pdf(results,experiment_dir)
 
 }
 
@@ -139,13 +142,25 @@ generate_pdf <- function (results,experiment_dir) {
   a4_height=11.69
   pdf(pdf_file,width=a4_height,height=a4_height)
 
+  clusters_list=NULL
+
   labels=NULL
   colors=NULL
+
   s1_scores=NULL
   s2_scores=NULL
   s3_scores=NULL
+
+  tp_scores=NULL
+  fp_scores=NULL
+  tn_scores=NULL
+  fn_scores=NULL
+
+  fp_rate_scores=NULL
+  tp_rate_scores=NULL
+
   i=1
-  truth=c("Ag1","Ag2","Ag3","Ag4","Ag5","Ag6","Ag7","Ag8","Ag9","Ag10","Ag1Na1")
+  truth=c("Ag1_1","Ag2_1","Ag3_1","Ag4_1","Ag5_1","Ag6_1","Ag7_1","Ag8_1","Ag9_1","Ag10_1","Ag1Na1_1")
   for(r in results$data)
   {
     #Print calculated clusters
@@ -170,14 +185,104 @@ generate_pdf <- function (results,experiment_dir) {
     s1_scores=append(s1_scores,s1)
     s2_scores=append(s2_scores,s2)
     s3_scores=append(s3_scores,s3)
+
+    clusters_list=append(clusters_list,clusters)
+
+    #Compute positives and negatives
+    chosen=(s1>results$meta$s1_threshold&s2>results$meta$s2_threshold&s3>results$meta$s3_threshold)
+    should_be_chosen=is.element(clusters,truth)
+
+    tp=sum(chosen&should_be_chosen)
+    fp=sum(chosen&!should_be_chosen)
+    tn=sum(!chosen&!should_be_chosen)
+    fn=sum(!chosen&should_be_chosen)
+
+    fp_rate=fp/(fp+tn)
+    tp_rate=tp/(tp+fn)
+
+    tp_scores=append(tp_scores,tp)
+    fp_scores=append(fp_scores,fp)
+    tn_scores=append(tn_scores,tn)
+    fn_scores=append(fn_scores,fn)
+
+    fp_rate_scores=append(fp_rate_scores,fp_rate)
+    tp_rate_scores=append(tp_rate_scores,tp_rate)
+
     i=i+1
+
+  }
+
+  s1_roc_fp_rate=NULL
+  s1_roc_tp_rate=NULL
+  s2_roc_fp_rate=NULL
+  s2_roc_tp_rate=NULL
+  s3_roc_fp_rate=NULL
+  s3_roc_tp_rate=NULL
+  all_roc_fp_rate=NULL
+  all_roc_tp_rate=NULL
+  for(t in seq(1,-0.001,length=1000))
+  {
+    #S1 ROC
+    chosen=s1_scores>t
+    should_be_chosen=is.element(clusters_list,truth)
+
+    tp=sum(chosen&should_be_chosen)
+    fp=sum(chosen&!should_be_chosen)
+    tn=sum(!chosen&!should_be_chosen)
+    fn=sum(!chosen&should_be_chosen)
+
+    s1_roc_fp_rate=append(s1_roc_fp_rate,fp/(fp+tn))
+    s1_roc_tp_rate=append(s1_roc_tp_rate,tp/(tp+fn))
+
+    #S2 ROC
+    chosen=s2_scores>t
+    should_be_chosen=is.element(clusters_list,truth)
+
+    tp=sum(chosen&should_be_chosen)
+    fp=sum(chosen&!should_be_chosen)
+    tn=sum(!chosen&!should_be_chosen)
+    fn=sum(!chosen&should_be_chosen)
+
+    s2_roc_fp_rate=append(s2_roc_fp_rate,fp/(fp+tn))
+    s2_roc_tp_rate=append(s2_roc_tp_rate,tp/(tp+fn))
+
+    #S3 ROC
+    chosen=s3_scores>t
+    should_be_chosen=is.element(clusters_list,truth)
+
+    tp=sum(chosen&should_be_chosen)
+    fp=sum(chosen&!should_be_chosen)
+    tn=sum(!chosen&!should_be_chosen)
+    fn=sum(!chosen&should_be_chosen)
+
+    s3_roc_fp_rate=append(s3_roc_fp_rate,fp/(fp+tn))
+    s3_roc_tp_rate=append(s3_roc_tp_rate,tp/(tp+fn))
+
+    #ALL ROC
+    chosen=s1_scores>t&s2_scores>t&s3_scores>t
+    should_be_chosen=is.element(clusters_list,truth)
+
+    tp=sum(chosen&should_be_chosen)
+    fp=sum(chosen&!should_be_chosen)
+    tn=sum(!chosen&!should_be_chosen)
+    fn=sum(!chosen&should_be_chosen)
+
+    all_roc_fp_rate=append(all_roc_fp_rate,fp/(fp+tn))
+    all_roc_tp_rate=append(all_roc_tp_rate,tp/(tp+fn))
   }
 
   #ROC AUC
-  plot(s1_scores,s2_scores,col=2)
-  plot(0:1,0:1,col=1)
-  text(s1_scores, s2_scores, labels=labels, cex= 0.7, pos=3,col=colors)
-  legend("bottomright",legend=c("Not in peak matrix","Should not be present","Should be matrix-related"),col=1:3,pch = 1)
+  plot(s1_roc_fp_rate,s1_roc_tp_rate,col=2,type="l",xlim=c(0,1),ylim=c(0,1))
+  lines(s2_roc_fp_rate,s2_roc_tp_rate,col=3)
+  lines(s3_roc_fp_rate,s3_roc_tp_rate,col=4)
+  lines(all_roc_fp_rate,all_roc_tp_rate,col=5)
+  lines(0:1,0:1)
+  legend=paste("S1 (",round(mean(s1_roc_tp_rate),2),"AUC )")
+  legend=append(legend,paste("S2 (",round(mean(s2_roc_tp_rate),2),"AUC )"))
+  legend=append(legend,paste("S3 (",round(mean(s3_roc_tp_rate),2),"AUC )"))
+  legend=append(legend,paste("All (",round(mean(all_roc_tp_rate),2),"AUC )"))
+  legend=append(legend,"Reference (0.5 AUC)")
+  legend("bottomright",legend=legend,col=c(2,3,4,5,1),lty=1)
 
   #S1 vs. S2
   plot(s1_scores,s2_scores,col=colors)

@@ -56,7 +56,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
                          s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",
                          MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                          mag_of_interest="intensity",normalization="None",pks_i=1,
-                         max_multi=10, add_list=NULL, sub_list=NULL,
+                         max_multi=10, add_list=NULL, sub_list=NULL, max_charge=1,
                          generate_pdf=F,default_page_layout=NULL,plot_type="debug",include_summary=T) {
   #SECTION -1 :: Input validation
   #Adjust tolerance to ppm if no full_spectrum is provided
@@ -111,7 +111,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
 
   #3.Generate list of possible chemical formulas
   base_forms=NULL
-  for(i in 1:max_multi)
+  for(i in 1:1)
   {
     base_forms=append(base_forms,multiform(matrix_formula,i))
   }
@@ -181,23 +181,32 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
   {
     #Multiply
     forms=multiform(base_forms,multiplier)
+
+    #Multiple charge
+    charge=rep(1:max_charge, each=max_charge)
+    forms=rep(forms,max_charge)
+
+    #Check
     checked=check_chemform(isotopes,forms)
 
     #Remove incorrect formulas
     checked=checked[which(checked$warning==F),]
 
     #Lower mass limit
-    checked=checked[which(checked$monoisotopic_mass>=min(pks$mass)),]
+    checked=checked[which(checked$monoisotopic_mass/charge>=min(pks$mass)),]
+    charge=charge[which(checked$monoisotopic_mass/charge>=min(pks$mass))]
     if(nrow(checked)==0)
       next;
 
     #Upper mass limit
-    checked=checked[which(checked$monoisotopic_mass<=max(pks$mass)),]
+    checked=checked[which(checked$monoisotopic_mass/charge<=max(pks$mass)),]
+    charge=charge[which(checked$monoisotopic_mass/charge<=max(pks$mass))]
     if(nrow(checked)==0)
       break;
 
+
     #Compute theoretical patterns
-    patterns=quiet(isowrap(isotopes,checked,resmass = FALSE,resolution = MALDI_resolution))
+    patterns=quiet(isowrap(isotopes,checked,charge=charge,resmass = FALSE,resolution = MALDI_resolution))
 
     #Append to final list
     for(i in 1:length(patterns))
@@ -206,7 +215,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
       {
         patterns_out$mass=append(patterns_out$mass,patterns[[i]][,1]) #store masses
         patterns_out[[mag_of_interest]]=append(patterns_out[[mag_of_interest]],patterns[[i]][,2]) #store intensities
-        patterns_out$cluster=append(patterns_out$cluster,rep(attributes(patterns)$names[i],length(patterns[[i]][,1]))) #store cluster names
+        patterns_out$cluster=append(patterns_out$cluster,rep(paste(attributes(patterns)$names[i],"_",charge[i],sep=""),length(patterns[[i]][,1]))) #store cluster names
       }
     }
     multiplier=multiplier+1
