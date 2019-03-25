@@ -111,7 +111,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
 
   #3.Generate list of possible chemical formulas
   base_forms=NULL
-  for(i in 1:1)
+  for(i in 1:max_multi)
   {
     base_forms=append(base_forms,multiform(matrix_formula,i))
   }
@@ -182,9 +182,9 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     #Multiply
     forms=multiform(base_forms,multiplier)
 
-    #Multiple charge
-    charge=rep(1:max_charge, each=max_charge)
-    forms=rep(forms,max_charge)
+    #Multiple charge [SOLVE: THE CURRENT IMPLEMENTATION IS MESSING UP WITH THE ADDUCT CLUSTERS]
+    # charge=rep(1:max_charge, each=max_charge)
+    # forms=rep(forms,max_charge)
 
     #Check
     checked=check_chemform(isotopes,forms)
@@ -193,20 +193,23 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     checked=checked[which(checked$warning==F),]
 
     #Lower mass limit
-    checked=checked[which(checked$monoisotopic_mass/charge>=min(pks$mass)),]
-    charge=charge[which(checked$monoisotopic_mass/charge>=min(pks$mass))]
+    checked=checked[which(checked$monoisotopic_mass>=min(pks$mass)),]
+    # checked=checked[which(checked$monoisotopic_mass/charge>=min(pks$mass)),]
+    # charge=charge[which(checked$monoisotopic_mass/charge>=min(pks$mass))]
     if(nrow(checked)==0)
       next;
 
     #Upper mass limit
-    checked=checked[which(checked$monoisotopic_mass/charge<=max(pks$mass)),]
-    charge=charge[which(checked$monoisotopic_mass/charge<=max(pks$mass))]
+    checked=checked[which(checked$monoisotopic_mass<=max(pks$mass)),]
+    # checked=checked[which(checked$monoisotopic_mass/charge<=max(pks$mass)),]
+    # charge=charge[which(checked$monoisotopic_mass/charge<=max(pks$mass))]
     if(nrow(checked)==0)
       break;
 
 
     #Compute theoretical patterns
-    patterns=quiet(isowrap(isotopes,checked,charge=charge,resmass = FALSE,resolution = MALDI_resolution))
+    patterns=quiet(isowrap(isotopes,checked,resmass = FALSE,resolution = MALDI_resolution))
+    # patterns=quiet(isowrap(isotopes,checked,charge=charge,resmass = FALSE,resolution = MALDI_resolution))
 
     #Append to final list
     for(i in 1:length(patterns))
@@ -215,7 +218,8 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
       {
         patterns_out$mass=append(patterns_out$mass,patterns[[i]][,1]) #store masses
         patterns_out[[mag_of_interest]]=append(patterns_out[[mag_of_interest]],patterns[[i]][,2]) #store intensities
-        patterns_out$cluster=append(patterns_out$cluster,rep(paste(attributes(patterns)$names[i],"_",charge[i],sep=""),length(patterns[[i]][,1]))) #store cluster names
+        patterns_out$cluster=append(patterns_out$cluster,rep(attributes(patterns)$names[i],length(patterns[[i]][,1]))) #store cluster names
+        # patterns_out$cluster=append(patterns_out$cluster,rep(paste(attributes(patterns)$names[i],"_",charge[i],sep=""),length(patterns[[i]][,1]))) #store cluster names
       }
     }
     multiplier=multiplier+1
@@ -344,6 +348,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
       {
         parent_classes=classification_record[1,]
         child_classes=rep(NA,num_peaks)
+        child_classes_priority=rep(NA,num_peaks)
         for(parent_class in unique(parent_classes[which(!is.na(parent_classes))]))
         {
           index_class=which(parent_classes==parent_class)
@@ -353,15 +358,23 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
 
         classification_record=rbind(child_classes,classification_record)
 
-        # child_classes=child_classes[which(!is.na(child_classes))]
-        for(child_class in unique(child_classes[which(!is.na(child_classes))]))
+        for(parent_class in unique(child_classes[which(!is.na(child_classes))]))
         {
-          index_class=which(child_classes==child_class)
-          index_not_class=which(child_classes!=child_class)
+          index_class=which(child_classes==parent_class)
+          child_classes_priority[index_class]=sum(calculated_magnitude[index_class])
+        }
+
+        # child_classes=child_classes[which(!is.na(child_classes))]
+        #for(child_class in unique(child_classes[which(!is.na(child_classes))]))
+        for(child_class_priority in unique(sort(child_classes_priority,decreasing = T)))
+        {
+          index_class=which(child_classes_priority==child_class_priority)
+          index_not_class=which(child_classes_priority!=child_class_priority)
+          child_class=child_classes[index_class][1]
           #Skip if cluster only contains 1 peak
           #Skip if other cluster peaks are not higher than 90% of the theoretical
           # if((length(index_class)<=1) | (experimental_magnitude[index_not_class]/max(experimental_magnitude[index_class])<0.9*calculated_magnitude[index_not_class]))
-          if((length(index_class)<=1))
+          if((length(index_class)<=1)|length(index_class)/num_peaks<0.5)
           {
             #classification_record[1,index_class]=NA
             next

@@ -19,3 +19,24 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ############################################################################
+
+
+#' Generate Synthetic Dataset
+#'
+#' Returns a synthetic dataset
+#'
+#' @param calculated_magnitude Calculated magnitude vector
+#' @param image_correl Image correlation matrix of the experimental magnitude vector
+#'
+#' @return Spectral similarity score S2
+#'
+#'
+#' @export
+generate_synthetic_dataset <- function (calculated_magnitude,image_correl) {
+  isotopes=NULL
+  data("isotopes", package = "enviPat", envir = environment())
+  adducts=NULL
+  data("adducts", package = "enviPat", envir=environment())
+
+
+}

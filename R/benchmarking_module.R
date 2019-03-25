@@ -34,7 +34,7 @@
 run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1",
                             s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",
                             MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
-                            mag_of_interest="intensity",normalization="TIC",
+                            mag_of_interest="intensity",normalization="None",
                             max_multi=10, add_list=NULL, sub_list=NULL,
                             save_results=T,generate_pdf=T,default_page_layout=NULL,include_summary=F,dataset_indices=NULL) {
   #0. Prepare directories
@@ -160,7 +160,7 @@ generate_pdf <- function (results,experiment_dir) {
   tp_rate_scores=NULL
 
   i=1
-  truth=c("Ag1_1","Ag2_1","Ag3_1","Ag4_1","Ag5_1","Ag6_1","Ag7_1","Ag8_1","Ag9_1","Ag10_1","Ag1Na1_1")
+  truth=c("Ag1","Ag2","Ag3","Ag4","Ag5","Ag6","Ag7","Ag8","Ag9","Ag10","Ag1Na1")
   for(r in results$data)
   {
     #Print calculated clusters
@@ -270,6 +270,32 @@ generate_pdf <- function (results,experiment_dir) {
     all_roc_fp_rate=append(all_roc_fp_rate,fp/(fp+tn))
     all_roc_tp_rate=append(all_roc_tp_rate,tp/(tp+fn))
   }
+
+  #Compute F1 score
+  tp=sum(tp_scores)
+  fp=sum(fp_scores)
+  fn=sum(fn_scores)
+  p=tp/(tp+fp) #precision
+  r=tp/(tp+fn) #recall
+  f1= 2*(r*p)/(r+p) #F1 score
+  print(f1)
+
+  #ROC AUC using pROC
+  roc1=pROC::roc(response=is.element(clusters_list,truth),predictor=s1_scores)
+  roc2=pROC::roc(response=is.element(clusters_list,truth),predictor=s2_scores)
+  roc3=pROC::roc(response=is.element(clusters_list,truth),predictor=s3_scores)
+  roc_all=pROC::roc(response=is.element(clusters_list,truth),predictor=s1_scores*s2_scores*s3_scores)
+
+  plot(1-roc1$specificities,roc1$sensitivities,col=2,type="l",xlim=c(0,1),ylim=c(0,1))
+  lines(1-roc2$specificities,roc2$sensitivities, add=T, col=3)
+  lines(1-roc3$specificities,roc3$sensitivities, add=T, col=4)
+  lines(1-roc_all$specificities,roc_all$sensitivities, add=T, col=5)
+  lines(0:1,0:1)
+  legend=paste("S1 (",round(roc1$auc,2),"AUC )")
+  legend=append(legend,paste("S2 (",round(roc2$auc,2),"AUC )"))
+  legend=append(legend,paste("S3 (",round(roc3$auc,2),"AUC )"))
+  legend=append(legend,paste("All (",round(roc_all$auc,2),"AUC )"))
+  legend("bottomright",legend=legend,col=c(2,3,4,5,1),lty=1)
 
   #ROC AUC
   plot(s1_roc_fp_rate,s1_roc_tp_rate,col=2,type="l",xlim=c(0,1),ylim=c(0,1))
