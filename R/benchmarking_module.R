@@ -32,7 +32,7 @@
 #'
 #' @export
 run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1"),
-                            s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",
+                            s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean", experiment_name="output",
                             MALDI_resolution=20000, tol_mode="scans",tol_ppm=200e-6,tol_scans=4,
                             mag_of_interest="intensity",normalization="None",
                             max_multi=10, add_list=NULL, sub_list=NULL, isobaric_detection=T,
@@ -42,7 +42,7 @@ run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documen
 
   images_dir=paste(base_dir,"/images",sep="")
   output_dir=paste(base_dir,"/output",sep="")
-  experiment_dir=paste(generate_file_name("/output",extension = "",folder = output_dir),"/",sep="")
+  experiment_dir=paste(generate_file_name(paste("/",experiment_name,sep=""),extension = "",folder = output_dir),"/",sep="")
   dir.create(experiment_dir)
 
   #1. Generate experiment metadata file
