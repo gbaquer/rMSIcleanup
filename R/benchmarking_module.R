@@ -54,7 +54,7 @@ run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documen
   subfolder_list=unlist(lapply(strsplit(pks_name_list,'/'),function(x) paste(x[1:length(x)-1],collapse="/")))
   num_files=length(pks_name_list)
 
-  results=list(meta=list(s1_threshold=s1_threshold,s2_threshold=s2_threshold,s3_threshold=s3_threshold),data=list())
+  results=list(meta=list(s1_threshold=s1_threshold,s2_threshold=s2_threshold,s3_threshold=s3_threshold,file_names=NULL),data=list())
 
   j=1
   for(i in 1:num_files)
@@ -86,6 +86,7 @@ run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documen
                       mag_of_interest=mag_of_interest,normalization=normalization,
                       max_multi=max_multi, add_list=add_list, sub_list=sub_list, isobaric_detection=isobaric_detection,
                       generate_pdf=generate_pdf,default_page_layout=default_page_layout,include_summary=include_summary,pks_i = pks_i)
+          results$meta$file_names=append(results$meta$file_names,full_spectrum_name)
           j=j+1
         }
         pks_i=pks_i+1
@@ -145,6 +146,7 @@ generate_pdf <- function (results,experiment_dir,info=experiment_dir) {
   a4_height=11.69
   pdf(pdf_file,width=a4_height,height=a4_height)
 
+  info=paste(info,paste(results$meta$file_names,collapse="\n"),sep="\n\n")
   print(plot_text(info))
 
   dataset_list=NULL
