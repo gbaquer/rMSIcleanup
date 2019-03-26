@@ -123,7 +123,7 @@ generate_pdf_from_file <- function () {
   results_path = file.choose()
   results = readRDS(results_path)
   #Print Results
-  generate_pdf(results,output_dir)
+  generate_pdf(results,output_dir,results_path)
 }
 
 #' Generate PDF report
@@ -136,7 +136,7 @@ generate_pdf_from_file <- function () {
 #'
 #'
 #' @export
-generate_pdf <- function (results,experiment_dir) {
+generate_pdf <- function (results,experiment_dir,info=experiment_dir) {
   #Open pdf
   #Generate pdf name [pks$name_001]
   pdf_file=generate_file_name("global_results",folder = experiment_dir)
@@ -144,6 +144,8 @@ generate_pdf <- function (results,experiment_dir) {
   a4_width=8.27
   a4_height=11.69
   pdf(pdf_file,width=a4_height,height=a4_height)
+
+  print(plot_text(info))
 
   dataset_list=NULL
   clusters_list=NULL
@@ -173,43 +175,43 @@ generate_pdf <- function (results,experiment_dir) {
     #Print calculated clusters
     clusters=unique(r$patterns_out$cluster)
     cluster_indices=match(clusters,r$patterns_out$cluster)
-    labels=append(labels,paste(i,"_",clusters,sep=""))
-
 
     s1=r$patterns_out$s1_scores[cluster_indices]
     s2=r$patterns_out$s2_scores[cluster_indices]
     s3=r$patterns_out$s3_scores[cluster_indices]
 
+    labels=append(labels,paste(i,"_",clusters,sep="")[which(s3!=0)])
+
     is_na=which(is.na(s1)|is.na(s2)|is.na(s3))
     col=is.element(clusters,truth)*1+2
     col[is_na]=1
-    colors=append(colors,col)
+    colors=append(colors,col[which(s3!=0)])
 
     s1[is.na(s1)]=0
     s2[is.na(s2)]=0
     s3[is.na(s3)]=0
 
-    s1_scores=append(s1_scores,s1)
-    s2_scores=append(s2_scores,s2)
-    s3_scores=append(s3_scores,s3)
+    s1_scores=append(s1_scores,s1[which(s3!=0)])
+    s2_scores=append(s2_scores,s2[which(s3!=0)])
+    s3_scores=append(s3_scores,s3[which(s3!=0)])
 
-    clusters_list=append(clusters_list,clusters)
+    clusters_list=append(clusters_list,clusters[which(s3!=0)])
 
     #Compute positives and negatives
     chosen=(s1>results$meta$s1_threshold&s2>results$meta$s2_threshold&s3>results$meta$s3_threshold)
     should_be_chosen=is.element(clusters,truth)
 
-    tp=sum(chosen&should_be_chosen)
-    fp=sum(chosen&!should_be_chosen)
-    tn=sum(!chosen&!should_be_chosen)
-    fn=sum(!chosen&should_be_chosen)
+    tp=sum(chosen&should_be_chosen&s3!=0)
+    fp=sum(chosen&!should_be_chosen&s3!=0)
+    tn=sum(!chosen&!should_be_chosen&s3!=0)
+    fn=sum(!chosen&should_be_chosen&s3!=0)
 
     classification=rep("np",length(global_clusters))
     global_index=match(clusters,global_clusters)
-    classification[global_index[which(chosen&should_be_chosen)]]="tp"
-    classification[global_index[which(chosen&!should_be_chosen)]]="fp"
-    classification[global_index[which(!chosen&!should_be_chosen)]]="tn"
-    classification[global_index[which(!chosen&should_be_chosen)]]="fn"
+    classification[global_index[which(chosen&should_be_chosen&s3!=0)]]="tp"
+    classification[global_index[which(chosen&!should_be_chosen&s3!=0)]]="fp"
+    classification[global_index[which(!chosen&!should_be_chosen&s3!=0)]]="tn"
+    classification[global_index[which(!chosen&should_be_chosen&s3!=0)]]="fn"
     classification_list=rbind(classification_list,classification)
 
     fp_rate=fp/(fp+tn)
@@ -318,18 +320,18 @@ generate_pdf <- function (results,experiment_dir) {
   legend=append(legend,paste("All 2 (",round(roc_all_3$auc,3),"AUC )"))
   legend("bottomright",legend=legend,col=2:7,lty=1)
 
-  #ROC AUC
-  plot(s1_roc_fp_rate,s1_roc_tp_rate,col=2,type="l",xlim=c(0,1),ylim=c(0,1))
-  lines(s2_roc_fp_rate,s2_roc_tp_rate,col=3)
-  lines(s3_roc_fp_rate,s3_roc_tp_rate,col=4)
-  lines(all_roc_fp_rate,all_roc_tp_rate,col=5)
-  lines(0:1,0:1)
-  legend=paste("S1 (",round(mean(s1_roc_tp_rate),2),"AUC )")
-  legend=append(legend,paste("S2 (",round(mean(s2_roc_tp_rate),2),"AUC )"))
-  legend=append(legend,paste("S3 (",round(mean(s3_roc_tp_rate),2),"AUC )"))
-  legend=append(legend,paste("All (",round(mean(all_roc_tp_rate),2),"AUC )"))
-  legend=append(legend,"Reference (0.5 AUC)")
-  legend("bottomright",legend=legend,col=c(2,3,4,5,6,1),lty=1)
+  # #ROC AUC
+  # plot(s1_roc_fp_rate,s1_roc_tp_rate,col=2,type="l",xlim=c(0,1),ylim=c(0,1))
+  # lines(s2_roc_fp_rate,s2_roc_tp_rate,col=3)
+  # lines(s3_roc_fp_rate,s3_roc_tp_rate,col=4)
+  # lines(all_roc_fp_rate,all_roc_tp_rate,col=5)
+  # lines(0:1,0:1)
+  # legend=paste("S1 (",round(mean(s1_roc_tp_rate),2),"AUC )")
+  # legend=append(legend,paste("S2 (",round(mean(s2_roc_tp_rate),2),"AUC )"))
+  # legend=append(legend,paste("S3 (",round(mean(s3_roc_tp_rate),2),"AUC )"))
+  # legend=append(legend,paste("All (",round(mean(all_roc_tp_rate),2),"AUC )"))
+  # legend=append(legend,"Reference (0.5 AUC)")
+  # legend("bottomright",legend=legend,col=c(2,3,4,5,6,1),lty=1)
 
   #S1 vs. S2
   plot(s1_scores,s2_scores,col=colors)
