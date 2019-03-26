@@ -22,7 +22,6 @@ Imports:
   grDevices,
   RColorBrewer,
   GlobalOptions,
-  XML,
   utils,
   pack,
   reticulate,
