@@ -38,7 +38,7 @@ run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documen
                             max_multi=10, add_list=NULL, sub_list=NULL, isobaric_detection=T,
                             save_results=T,generate_pdf=T,default_page_layout=NULL,include_summary=F,dataset_indices=NULL) {
   #0. Prepare directories
-  base_dir=base_dirs(which(dir.exists(base_dirs)))[1]
+  base_dir=base_dirs[which(dir.exists(base_dirs))][1]
 
   images_dir=paste(base_dir,"/images",sep="")
   output_dir=paste(base_dir,"/output",sep="")
