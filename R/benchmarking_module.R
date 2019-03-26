@@ -33,7 +33,7 @@
 #' @export
 run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1"),
                             s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",
-                            MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
+                            MALDI_resolution=20000, tol_mode="scans",tol_ppm=200e-6,tol_scans=4,
                             mag_of_interest="intensity",normalization="None",
                             max_multi=10, add_list=NULL, sub_list=NULL, isobaric_detection=T,
                             save_results=T,generate_pdf=T,default_page_layout=NULL,include_summary=F,dataset_indices=NULL) {
@@ -299,17 +299,23 @@ generate_pdf <- function (results,experiment_dir) {
   roc2=pROC::roc(response=is.element(clusters_list,truth),predictor=s2_scores)
   roc3=pROC::roc(response=is.element(clusters_list,truth),predictor=s3_scores)
   roc_all=pROC::roc(response=is.element(clusters_list,truth),predictor=s1_scores*s2_scores*s3_scores)
+  roc_all_2=pROC::roc(response=is.element(clusters_list,truth),predictor=sqrt((s1_scores^2)+(s2_scores^2)+(s3_scores^2)))
+  roc_all_3=pROC::roc(response=is.element(clusters_list,truth),predictor=sqrt((s1_scores^2)+(s3_scores^2)))
 
   plot(1-roc1$specificities,roc1$sensitivities,col=2,type="l",xlim=c(0,1),ylim=c(0,1))
   lines(1-roc2$specificities,roc2$sensitivities, add=T, col=3)
   lines(1-roc3$specificities,roc3$sensitivities, add=T, col=4)
   lines(1-roc_all$specificities,roc_all$sensitivities, add=T, col=5)
+  lines(1-roc_all_2$specificities,roc_all_2$sensitivities, add=T, col=6)
+  lines(1-roc_all_3$specificities,roc_all_3$sensitivities, add=T, col=7)
   lines(0:1,0:1)
-  legend=paste("S1 (",round(roc1$auc,2),"AUC )")
-  legend=append(legend,paste("S2 (",round(roc2$auc,2),"AUC )"))
-  legend=append(legend,paste("S3 (",round(roc3$auc,2),"AUC )"))
-  legend=append(legend,paste("All (",round(roc_all$auc,2),"AUC )"))
-  legend("bottomright",legend=legend,col=c(2,3,4,5,1),lty=1)
+  legend=paste("S1 (",round(roc1$auc,3),"AUC )")
+  legend=append(legend,paste("S2 (",round(roc2$auc,3),"AUC )"))
+  legend=append(legend,paste("S3 (",round(roc3$auc,3),"AUC )"))
+  legend=append(legend,paste("All (",round(roc_all$auc,3),"AUC )"))
+  legend=append(legend,paste("All 2 (",round(roc_all_2$auc,3),"AUC )"))
+  legend=append(legend,paste("All 2 (",round(roc_all_3$auc,3),"AUC )"))
+  legend("bottomright",legend=legend,col=2:7,lty=1)
 
   #ROC AUC
   plot(s1_roc_fp_rate,s1_roc_tp_rate,col=2,type="l",xlim=c(0,1),ylim=c(0,1))
@@ -322,7 +328,7 @@ generate_pdf <- function (results,experiment_dir) {
   legend=append(legend,paste("S3 (",round(mean(s3_roc_tp_rate),2),"AUC )"))
   legend=append(legend,paste("All (",round(mean(all_roc_tp_rate),2),"AUC )"))
   legend=append(legend,"Reference (0.5 AUC)")
-  legend("bottomright",legend=legend,col=c(2,3,4,5,1),lty=1)
+  legend("bottomright",legend=legend,col=c(2,3,4,5,6,1),lty=1)
 
   #S1 vs. S2
   plot(s1_scores,s2_scores,col=colors)
