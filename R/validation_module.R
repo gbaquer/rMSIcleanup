@@ -53,7 +53,7 @@
 #'
 #' @export
 generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/",
-                         s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",
+                         s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",correlation_method="pearson",
                          MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                          mag_of_interest="intensity",normalization="None",pks_i=1,
                          max_multi=10, add_list=NULL, sub_list=NULL, max_charge=1, isobaric_detection=T,
@@ -321,7 +321,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     }
     colnames(final_image)<-NULL #Remove column names
 
-    image_correl=cor(final_image)
+    image_correl=cor(final_image,method=correlation_method)
     image_correl[which(is.na(image_correl))]=0
 
     #Compute similarity scores using all peaks in the cluster
