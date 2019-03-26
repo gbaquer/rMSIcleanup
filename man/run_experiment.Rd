@@ -5,19 +5,19 @@
 \title{Run experiment}
 \usage{
 run_experiment(matrix_formula,
-  base_dir = "C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1",
-  s1_threshold = 0.8, s2_threshold = 0.85, s3_threshold = 0.7,
+  base_dirs = c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1",
+  "/home/gbaquer/msidata/Ag Software Test 1"), s1_threshold = 0.8,
+  s2_threshold = 0.8, s3_threshold = 0.7,
   similarity_method = "euclidean", MALDI_resolution = 20000,
   tol_mode = "ppm", tol_ppm = 2e-04, tol_scans = 4,
-  mag_of_interest = "intensity", normalization = "TIC",
+  mag_of_interest = "intensity", normalization = "None",
   max_multi = 10, add_list = NULL, sub_list = NULL,
-  generate_pdf = T, default_page_layout = NULL, include_summary = F,
+  isobaric_detection = T, save_results = T, generate_pdf = T,
+  default_page_layout = NULL, include_summary = F,
   dataset_indices = NULL)
 }
 \arguments{
 \item{matrix_formula}{String giving the chemical formula of the matrix in the enviPat notation}
-
-\item{base_dir}{Base directory where the images are stored and the output reports should be stored}
 
 \item{s1_threshold}{Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present}
 
@@ -50,6 +50,10 @@ run_experiment(matrix_formula,
 \item{default_page_layout}{Page layout to be used in the pdf plotting.}
 
 \item{include_summary}{Boolean value indicating if the summary is to be included in the pd}
+
+\item{dataset_indices}{Vector containing the indices of the datasets to be used}
+
+\item{base_dir}{Base directory where the images are stored and the output reports should be stored}
 }
 \value{
 None

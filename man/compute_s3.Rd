@@ -7,11 +7,11 @@
 compute_s3(calculated_mass, experimental_mass, similarity_method)
 }
 \arguments{
+\item{calculated_mass}{Calculated mass vector}
+
+\item{experimental_mass}{Experimental mass vector}
+
 \item{similarity_method}{Similarity method to be used}
-
-\item{calculated_magnitude}{Calculated mass vector}
-
-\item{experimental_magnitude}{Experimental mass vector}
 }
 \value{
 Mass tolerance score S3

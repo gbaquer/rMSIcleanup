@@ -5,12 +5,13 @@
 \title{Generate ground truth}
 \usage{
 generate_gt(matrix_formula, pks, full_spectrum = NULL,
-  folder = "output/", s1_threshold = 0.8, s2_threshold = 0.85,
+  folder = "output/", s1_threshold = 0.8, s2_threshold = 0.8,
   s3_threshold = 0.7, similarity_method = "euclidean",
   MALDI_resolution = 20000, tol_mode = "ppm", tol_ppm = 2e-04,
   tol_scans = 4, mag_of_interest = "intensity",
   normalization = "None", pks_i = 1, max_multi = 10,
-  add_list = NULL, sub_list = NULL, generate_pdf = F,
+  add_list = NULL, sub_list = NULL, max_charge = 1,
+  isobaric_detection = T, generate_pdf = F,
   default_page_layout = NULL, plot_type = "debug",
   include_summary = T)
 }
