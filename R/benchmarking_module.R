@@ -115,14 +115,15 @@ run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documen
 #'
 #' @export
 generate_pdf_from_file <- function () {
-  base_dir="C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1"
-  output_dir=paste(base_dir,"/output",sep="")
-  experiment_dir=paste(generate_file_name("/output",extension = "",folder = output_dir),"",sep="")
+  base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1")
+  base_dir=base_dirs[which(dir.exists(base_dirs))][1]
+  output_dir=paste(base_dir,"/output/",sep="")
+  #experiment_dir=paste(generate_file_name("/output",extension = "",folder = output_dir),"",sep="")
   #Load Results
   results_path = file.choose()
   results = readRDS(results_path)
   #Print Results
-  generate_pdf(results,experiment_dir)
+  generate_pdf(results,output_dir)
 }
 
 #' Generate PDF report
