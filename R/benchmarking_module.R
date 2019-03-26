@@ -31,13 +31,15 @@
 #'
 #'
 #' @export
-run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1",
+run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1"),
                             s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",
                             MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                             mag_of_interest="intensity",normalization="None",
-                            max_multi=10, add_list=NULL, sub_list=NULL,
+                            max_multi=10, add_list=NULL, sub_list=NULL, isobaric_detection=T,
                             save_results=T,generate_pdf=T,default_page_layout=NULL,include_summary=F,dataset_indices=NULL) {
   #0. Prepare directories
+  base_dir=base_dirs(which(dir.exists(base_dirs)))[1]
+
   images_dir=paste(base_dir,"/images",sep="")
   output_dir=paste(base_dir,"/output",sep="")
   experiment_dir=paste(generate_file_name("/output",extension = "",folder = output_dir),"/",sep="")
@@ -82,7 +84,7 @@ run_experiment <- function (matrix_formula, base_dir="C:/Users/Gerard/Documents/
                       s1_threshold=s1_threshold,s2_threshold=s2_threshold, s3_threshold=s3_threshold, similarity_method=similarity_method,
                       MALDI_resolution=MALDI_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
                       mag_of_interest=mag_of_interest,normalization=normalization,
-                      max_multi=max_multi, add_list=add_list, sub_list=sub_list,
+                      max_multi=max_multi, add_list=add_list, sub_list=sub_list, isobaric_detection=isobaric_detection,
                       generate_pdf=generate_pdf,default_page_layout=default_page_layout,include_summary=include_summary,pks_i = pks_i)
           j=j+1
         }
@@ -142,7 +144,9 @@ generate_pdf <- function (results,experiment_dir) {
   a4_height=11.69
   pdf(pdf_file,width=a4_height,height=a4_height)
 
+  dataset_list=NULL
   clusters_list=NULL
+  classification_list=NULL
 
   labels=NULL
   colors=NULL
@@ -161,6 +165,8 @@ generate_pdf <- function (results,experiment_dir) {
 
   i=1
   truth=c("Ag1","Ag2","Ag3","Ag4","Ag5","Ag6","Ag7","Ag8","Ag9","Ag10","Ag1Na1")
+  global_clusters=unique(unlist(lapply(results$data,function(x)unique(x$patterns_out$cluster))))
+  dataset_names=NULL
   for(r in results$data)
   {
     #Print calculated clusters
@@ -197,6 +203,14 @@ generate_pdf <- function (results,experiment_dir) {
     tn=sum(!chosen&!should_be_chosen)
     fn=sum(!chosen&should_be_chosen)
 
+    classification=rep("np",length(global_clusters))
+    global_index=match(clusters,global_clusters)
+    classification[global_index[which(chosen&should_be_chosen)]]="tp"
+    classification[global_index[which(chosen&!should_be_chosen)]]="fp"
+    classification[global_index[which(!chosen&!should_be_chosen)]]="tn"
+    classification[global_index[which(!chosen&should_be_chosen)]]="fn"
+    classification_list=rbind(classification_list,classification)
+
     fp_rate=fp/(fp+tn)
     tp_rate=tp/(tp+fn)
 
@@ -211,7 +225,7 @@ generate_pdf <- function (results,experiment_dir) {
     i=i+1
 
   }
-
+  clusters=unique(results$data[[1]]$patterns_out$cluster)
   s1_roc_fp_rate=NULL
   s1_roc_tp_rate=NULL
   s2_roc_fp_rate=NULL
@@ -336,6 +350,19 @@ generate_pdf <- function (results,experiment_dir) {
   abline(v = results$meta$s1_threshold)
   abline(h = results$meta$s3_threshold)
 
+  #Common false negatives
+  cluster_indices=which(apply(classification_list=="fn",2,sum)>0)
+  fn_matrix=(classification_list[,cluster_indices]=="fn")*2+(classification_list[,cluster_indices]=="np")*1-1
+  colnames(fn_matrix)<-global_clusters[cluster_indices]
+  rownames(fn_matrix)<-1:dim(fn_matrix)[1]
+  print(levelplot(t(fn_matrix),xlab="Clusters",ylab="Dataset",main="False Negatives"))
+
+  #Common false positives
+  cluster_indices=which(apply(classification_list=="fp",2,sum)>0)
+  fn_matrix=(classification_list[,cluster_indices]=="fp")*2+(classification_list[,cluster_indices]=="np")*1-1
+  colnames(fn_matrix)<-global_clusters[cluster_indices]
+  rownames(fn_matrix)<-1:dim(fn_matrix)[1]
+  print(levelplot(t(fn_matrix),xlab="Clusters",ylab="Dataset",main="False Positives"))
   #Close pdf file
   dev.off()
 }

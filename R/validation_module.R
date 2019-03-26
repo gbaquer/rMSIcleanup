@@ -56,7 +56,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
                          s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",
                          MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
                          mag_of_interest="intensity",normalization="None",pks_i=1,
-                         max_multi=10, add_list=NULL, sub_list=NULL, max_charge=1,
+                         max_multi=10, add_list=NULL, sub_list=NULL, max_charge=1, isobaric_detection=T,
                          generate_pdf=F,default_page_layout=NULL,plot_type="debug",include_summary=T) {
   #SECTION -1 :: Input validation
   #Adjust tolerance to ppm if no full_spectrum is provided
@@ -341,7 +341,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
 
     classification_record=rbind(rep(1,num_peaks))
     classes_list=rbind(c(1,s1,s2,s3))
-    if(s1<s1_threshold|s2<s2_threshold|s3<s3_threshold)
+    if(isobaric_detection&(s1<s1_threshold|s2<s2_threshold|s3<s3_threshold))
     {
       found=F
       while(!found & any(!is.na(classification_record[1,])))
