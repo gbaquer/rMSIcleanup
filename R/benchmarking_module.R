@@ -380,6 +380,22 @@ generate_pdf <- function (results,experiment_dir,info=experiment_dir) {
   #Close pdf file
   dev.off()
 }
+test_single_file <- function(){
+  pks_path = file.choose()
+  full_spectrum_path = file.choose()
+
+  start_time <- Sys.time()
+
+  pks <- rMSIproc::LoadPeakMatrix(pks_path)
+
+  full_spectrum <- rMSI::LoadMsiData(full_spectrum_path)
+  load_time <- Sys.time()
+  generate_gt("Ag1",pks,full_spectrum,add_list=c("H1","Na1","Cl1","K1","N1O3"),generate_pdf = T,folder = "C:/Users/Gerard/Documents/1. Uni/1.5. PHD/rMSIcleanup/output")
+  end_time <- Sys.time()
+  print(load_time-start_time)
+  print(end_time-load_time)
+
+}
 #' Test Paraffin
 #'
 #' Test generate_gt with Paraffin
