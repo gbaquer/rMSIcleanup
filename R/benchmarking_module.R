@@ -79,14 +79,27 @@ run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documen
         {
           full_spectrum=rMSI::LoadMsiData(full_spectrum_name)
 
+          pks_individual=get_one_peakMatrix(pks,pks_i)
           #[Potential improvement: Use ... instead]
-          results$data[[j]]= generate_gt(matrix_formula=matrix_formula,pks=pks,full_spectrum=full_spectrum,folder=experiment_dir,
+          results$data[[j]]= generate_gt(matrix_formula=matrix_formula,pks=pks_individual,full_spectrum=full_spectrum,folder=experiment_dir,
                       s1_threshold=s1_threshold,s2_threshold=s2_threshold, s3_threshold=s3_threshold, similarity_method=similarity_method,correlation_method=correlation_method,
                       MALDI_resolution=MALDI_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
                       mag_of_interest=mag_of_interest,normalization=normalization,
                       max_multi=max_multi, add_list=add_list, sub_list=sub_list, isobaric_detection=isobaric_detection,
                       generate_pdf=generate_pdf,default_page_layout=default_page_layout,include_summary=include_summary,pks_i = pks_i)
           results$meta$file_names=append(results$meta$file_names,full_spectrum_name)
+
+          #Remove Matrix
+          pks_without_matrix=pks_individual
+          pks_without_matrix$mass=pks_individual$mass[which(!results$data[[j]]$gt)]
+          pks_without_matrix$intensity=pks_individual$intenisty[,which(!results$data[[j]]$gt)]
+          pks_without_matrix$SNR=pks_individual$SNR[,which(!results$data[[j]]$gt)]
+          pks_without_matrix$area=pks_individual$area[,which(!results$data[[j]]$gt)]
+
+          #Store Files
+          full_spectrum_name
+          rMSIproc::StorePeakMatrix(paste(experiment_dir,unlist(strsplit(name,".",fixed=T))[1],"-before.zip",sep = ""),pks_individual)
+          rMSIproc::StorePeakMatrix(paste(experiment_dir,unlist(strsplit(name,".",fixed=T))[1],"-after.zip",sep = ""),pks_without_matrix)
           j=j+1
         }
         pks_i=pks_i+1
@@ -104,6 +117,47 @@ run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documen
   #Print results
   generate_pdf(results,experiment_dir)
 
+}
+
+#' Generate before and after files
+#'
+#' Generate before and after zip files
+#'
+#'
+#' @return None
+#'
+#'
+#' @export
+generate_before_after <- function () {
+  #1. Open File
+  base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1")
+  base_dir=base_dirs[which(dir.exists(base_dirs))][1]
+  output_dir=paste(base_dir,"/output/",sep="")
+  #experiment_dir=paste(generate_file_name("/output",extension = "",folder = output_dir),"",sep="")
+  #Load Results
+  #results_path = file.choose()
+  #results = readRDS(results_path)
+  results = readRDS("/home/gbaquer/msidata/Ag Software Test 1/output/output_000/global_results_000.rds")
+  pks_name=tools::file_path_sans_ext(basename(results$meta$file_names))
+  pks_folder=dirname(results$meta$file_names)
+  pks_file=paste(pks_folder,"/mergeddata-peaks.zip",sep = "")
+  #pks_i=unlist(lapply(seq_along(pks_folder),function(i) sum(pks_folder[1:i]==pks_folder[i])))
+  i=1
+  for(filename in unique(pks_file))
+  {
+    pks=rMSIproc::LoadPeakMatrix(filename)
+    for(pks_i in 1:sum(pks_file==filename))
+    {
+      #2. Load before peak matrix
+      pks_before=get_one_peakMatrix(pks,pks_i)
+      #3. Filter out matrix-related peaks
+      pks_after=get_columns_peakMatrix(pks_before,which(!results$data[[i]]$gt))
+      #4. Store results
+      rMSIproc::StorePeakMatrix(paste(output_dir,paste(pks_name[i],pks_i,"before.zip",sep="_"),sep=""),pks_before)
+      rMSIproc::StorePeakMatrix(paste(output_dir,paste(pks_name[i],pks_i,"after.zip",sep="_"),sep=""),pks_after)
+      i=i+1
+    }
+  }
 }
 
 #' Generate PDF report

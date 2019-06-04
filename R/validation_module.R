@@ -90,7 +90,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
   #SECTION 0 :: Preprocessing
 
   # Select first image if there are multiple
-  pks=get_one_peakMatrix(pks,pks_i)
+  #pks=get_one_peakMatrix(pks,pks_i)
 
   # Normalize
   if(normalization!="None")

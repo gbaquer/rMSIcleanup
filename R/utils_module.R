@@ -356,6 +356,25 @@ get_one_peakMatrix <- function(pks,i=1)
   return(pks)
 }
 
+#' Get one peak matrix
+#'
+#' Returns the peak matrix in pks corresponding to the ith image
+#'
+#' @param pks Peak Matrix
+#' @param i Index of the peak matrix to be retieved
+#'
+#' @return Peak matrix containing only the first image from pks
+#'
+#' @export
+get_columns_peakMatrix <- function(pks,cols=seq_along(pks$mass))
+{
+  pks$mass=pks$mass[cols]
+  pks$intensity=pks$intensity[,cols]
+  pks$area=pks$area[,cols]
+  pks$SNR=pks$SNR[,cols]
+  return(pks)
+}
+
 #' Get closest peak
 #'
 #' Returns the indices of "experimental_masses" that are the closest to each element in "calc_masses"
