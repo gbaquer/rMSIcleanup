@@ -467,6 +467,30 @@ exponential_decay_similarity <- function(a,b,method="euclidian",normalize=T)
   return(s)
 }
 
+# SIMILARITY MEASURES
+
+#' Exponential Decay Similarity
+#'
+#' Determines the degree of similarity between a vector a and a vector b as 1/exp(d) where d corresponds to the distance between the two normalized vectors calculated according to the specified method
+#'
+#' @param a Vector a
+#' @param b Vector b
+#' @param method The distance measure to be used. This must be one of "euclidean", "maximum", "manhattan", "canberra", "binary" or "minkowski". Any unambiguous substring can be given.
+#' @param normalize Boolean value indicating whether the a and b vectors should be normalixzed
+#'
+#' @return Similarity between a and b
+centroid2peakmatrix <- function(file_path)
+{
+  #Import an imzML using centroid mode (after peak picking).
+  pkLst <- rMSIproc::import_imzMLpeakList(file_path)
+
+  #Run the peak-binning to get the peak matrix.
+  myPkMat <- rMSIproc::PeakList2PeakMatrix(pkLst$peakList, pkLst$pos, BinTolerance = 25, BinToleranceUsingPPM = T)
+
+  #Save the peak matrix.
+  rMSIproc::StorePeakMatrix(paste(tools::file_path_sans_ext(file_path),".zip",sep=""), myPkMat)
+}
+
 # if(is.na(s))
 #   s=0
 

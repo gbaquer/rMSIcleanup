@@ -33,7 +33,7 @@
 #' @export
 run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1"),
                             s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean", correlation_method="pearson", experiment_name="output",
-                            MALDI_resolution=20000, tol_mode="scans",tol_ppm=200e-6,tol_scans=4,
+                            MALDI_resolution=20000, tol_mode="scans",tol_ppm=100e-6,tol_scans=4,
                             mag_of_interest="intensity",normalization="None",
                             max_multi=10, add_list=NULL, sub_list=NULL, isobaric_detection=T,
                             save_results=T,generate_pdf=T,default_page_layout=NULL,include_summary=F,dataset_indices=NULL) {
@@ -75,33 +75,20 @@ run_experiment <- function (matrix_formula, base_dirs=c("C:/Users/Gerard/Documen
         full_spectrum_name=paste(subfolder,"/",unlist(strsplit(name,".",fixed=T))[1],"-proc.tar",sep="")
         print(full_spectrum_name)
 
+        full_spectrum=NULL
         if(file.exists(full_spectrum_name))
         {
           full_spectrum=rMSI::LoadMsiData(full_spectrum_name)
-
-          pks_individual=get_one_peakMatrix(pks,pks_i)
-          #[Potential improvement: Use ... instead]
-          results$data[[j]]= generate_gt(matrix_formula=matrix_formula,pks=pks_individual,full_spectrum=full_spectrum,folder=experiment_dir,
-                      s1_threshold=s1_threshold,s2_threshold=s2_threshold, s3_threshold=s3_threshold, similarity_method=similarity_method,correlation_method=correlation_method,
-                      MALDI_resolution=MALDI_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
-                      mag_of_interest=mag_of_interest,normalization=normalization,
-                      max_multi=max_multi, add_list=add_list, sub_list=sub_list, isobaric_detection=isobaric_detection,
-                      generate_pdf=generate_pdf,default_page_layout=default_page_layout,include_summary=include_summary,pks_i = pks_i)
-          results$meta$file_names=append(results$meta$file_names,full_spectrum_name)
-
-          #Remove Matrix
-          pks_without_matrix=pks_individual
-          pks_without_matrix$mass=pks_individual$mass[which(!results$data[[j]]$gt)]
-          pks_without_matrix$intensity=pks_individual$intenisty[,which(!results$data[[j]]$gt)]
-          pks_without_matrix$SNR=pks_individual$SNR[,which(!results$data[[j]]$gt)]
-          pks_without_matrix$area=pks_individual$area[,which(!results$data[[j]]$gt)]
-
-          #Store Files
-          full_spectrum_name
-          rMSIproc::StorePeakMatrix(paste(experiment_dir,unlist(strsplit(name,".",fixed=T))[1],"-before.zip",sep = ""),pks_individual)
-          rMSIproc::StorePeakMatrix(paste(experiment_dir,unlist(strsplit(name,".",fixed=T))[1],"-after.zip",sep = ""),pks_without_matrix)
-          j=j+1
         }
+        pks_individual=get_one_peakMatrix(pks,pks_i)
+        #[Potential improvement: Use ... instead]
+        results$data[[j]]= generate_gt(matrix_formula=matrix_formula,pks=pks_individual,full_spectrum=full_spectrum,folder=experiment_dir,
+                    s1_threshold=s1_threshold,s2_threshold=s2_threshold, s3_threshold=s3_threshold, similarity_method=similarity_method,correlation_method=correlation_method,
+                    MALDI_resolution=MALDI_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
+                    mag_of_interest=mag_of_interest,normalization=normalization,
+                    max_multi=max_multi, add_list=add_list, sub_list=sub_list, isobaric_detection=isobaric_detection,
+                    generate_pdf=generate_pdf,default_page_layout=default_page_layout,include_summary=include_summary,pks_i = pks_i)
+        results$meta$file_names=append(results$meta$file_names,full_spectrum_name)
         pks_i=pks_i+1
       }
     }
