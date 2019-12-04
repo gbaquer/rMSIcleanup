@@ -5,7 +5,7 @@
 #' @docType package
 #' @author Gerard Baquer Gómez
 #' @exportPattern "^[[:alpha:]]+"
-#' @import Rcpp R.utils rMSIproc gridExtra lattice RColorBrewer graphics GlobalOptions pack reticulate ggplot2 reshape2 enviPat tsne
+#' @import Rcpp R.utils rMSIproc gridExtra lattice RColorBrewer viridis ggrepel graphics GlobalOptions pack reticulate ggplot2 reshape2 enviPat tsne PRROC Rtsne caret
 #' @importFrom rMSI loadImageSliceFromMass loadImageSliceFromCols
 #' @importFrom Rcpp evalCpp
 #' @importFrom stats cor cov kmeans prcomp sd weighted.mean dist

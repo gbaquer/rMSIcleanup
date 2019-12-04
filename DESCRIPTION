@@ -16,11 +16,14 @@ Imports:
   rMSI,
   rMSIproc,
   gridExtra,
+  viridis,
   lattice,
   graphics,
   stats,
   grDevices,
+  ggrepel,
   RColorBrewer,
+  viridis,
   GlobalOptions,
   utils,
   pack,
@@ -29,7 +32,10 @@ Imports:
   ggplot2,
   enviPat,
   tsne,
-  stringr
+  stringr,
+  PRROC,
+  Rtsne,
+  caret
 LinkingTo: Rcpp
 Suggests: 
     testthat

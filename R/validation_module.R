@@ -42,6 +42,7 @@
 #' @param add_list List of adducts to be added to the matrix formula in the format defined by enviPat. Example: c("H1","Na1","K1")
 #' @param sub_list List of compounds to be substracted to the matrix formula in the format defined by enviPat. Example: c("H1",H2O1")
 #' @param generate_pdf Boolean indicating whether to generate a pdf report or not
+#' @param generate_pdf Boolean indicating whether to generate a TIFF figures or not
 #' @param default_page_layout Page layout to be used in the pdf plotting.
 #' @param folder Name of the folder in which to store the pdf report
 #' @param similarity_method Similarity method to be used in the computation of the distance
@@ -53,11 +54,11 @@
 #'
 #' @export
 generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/",
-                         s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",correlation_method="pearson",
-                         MALDI_resolution=20000, tol_mode="ppm",tol_ppm=200e-6,tol_scans=4,
+                         s_threshold=0.65,s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean",correlation_method="pearson",
+                         MALDI_resolution=20000, tol_mode="scans",tol_ppm=200e-6,tol_scans=4,
                          mag_of_interest="intensity",normalization="None",pks_i=1,
-                         max_multi=10, add_list=NULL, sub_list=NULL, max_charge=1, isobaric_detection=T,
-                         generate_pdf=F,default_page_layout=NULL,plot_type="debug",include_summary=T) {
+                         min_multi=1,max_multi=10, add_list=NULL, sub_list=NULL, max_charge=1, isobaric_detection=T,
+                         generate_pdf=T,generate_figures=F,default_page_layout=NULL,plot_type="debug",include_summary=F) {
   #SECTION -1 :: Input validation
   #Adjust tolerance to ppm if no full_spectrum is provided
   if(is.null(full_spectrum))
@@ -110,15 +111,19 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
   #2. [Not implemented yet] Assess which mass range is needed
 
   #3.Generate list of possible chemical formulas
+  if(!is.null(add_list))
+    matrix_formula=append(matrix_formula,unlist(lapply(add_list,function(x) enviPat::mergeform(matrix_formula,x))))
   base_forms=NULL
-  for(i in 1:max_multi)
+  for(i in min_multi:max_multi)
   {
     base_forms=append(base_forms,multiform(matrix_formula,i))
   }
-  if(!is.null(add_list))
-    base_forms=append(base_forms,unlist(lapply(add_list,function(x) enviPat::mergeform(base_forms,x))))
-  if(!is.null(sub_list))
-    base_forms=append(base_forms,unlist(lapply(sub_list,function(x) enviPat::subform(base_forms,x)[which(enviPat::check_ded(base_forms,x)=="FALSE")])))
+  if(generate_figures)
+    base_forms=c("Ag6")
+  # if(!is.null(add_list))
+  #   base_forms=append(base_forms,unlist(lapply(add_list,function(x) enviPat::mergeform(base_forms,x))))
+  # if(!is.null(sub_list))
+  #   base_forms=append(base_forms,unlist(lapply(sub_list,function(x) enviPat::subform(base_forms,x)[which(enviPat::check_ded(base_forms,x)=="FALSE")])))
 
   sorted_ix=sort(check_chemform(isotopes,base_forms)$monoisotopic_mass,index.return=T)$ix
   base_forms=base_forms[sorted_ix]
@@ -341,7 +346,8 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
 
     classification_record=rbind(rep(1,num_peaks))
     classes_list=rbind(c(1,s1,s2,s3))
-    if(isobaric_detection&(s1<s1_threshold|s2<s2_threshold|s3<s3_threshold))
+    # if(isobaric_detection&((s1*s2)<s_threshold))
+    if(isobaric_detection&(s1>s1_threshold)&(s2>s2_threshold) )
     {
       found=F
       while(!found & any(!is.na(classification_record[1,])))
@@ -387,7 +393,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
           #Strore results
           classes_list=rbind(classes_list,c(child_class,s1_tmp,s2_tmp,s3_tmp))
           #Finish if similarity conditions met
-          if(s1_tmp>s1_threshold & s2_tmp>s2_threshold & s3_tmp>s3_threshold)
+          if((s1_tmp>s1_threshold)&(s2_tmp>s2_threshold))
           {
             s1=s1_tmp
             s2=s2_tmp
@@ -544,8 +550,9 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
 
     #Choose which peaks belong in the ground truth (gt)
     chosen=rep(F,num_peaks)
-    chosen[intersect(index_pks,index_selected)]=(!is.na(s1)&!is.na(s2)&!is.na(s3))&(s1>s1_threshold & s2>s2_threshold & s3>s3_threshold)
-
+    #chosen[intersect(index_pks,index_selected)]=(!is.na(s1)&!is.na(s2)&!is.na(s3))&(s1*s2>s_threshold)
+    # chosen[index_selected]=(!is.na(s1)&!is.na(s2)&!is.na(s3))&(s1*s2>s_threshold)
+    chosen[index_selected]=(!is.na(s1)&!is.na(s2)&!is.na(s3))&(s1>s1_threshold)&(s2>s2_threshold)
 
     #Adjust magnitude in the NA mode for plotting
     if(is.null(full_spectrum))
@@ -567,7 +574,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     results$patterns_out$present[calculated_index[index_pks]]=T
 
     # 7. Generate plots
-    if(pkg_opt()$verbose_level<=-1 || generate_pdf)
+    if(pkg_opt()$verbose_level<=-1 || generate_pdf || generate_figures)
     {
       #Print progress to console
       print(paste(cluster,s1,s2,s3))
@@ -595,7 +602,7 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
       #Prepare melted dataframe
       df=data.frame(mass=calculated_mass,calculated_magnitude=calculated_magnitude,experimental_magnitude=norm_experimental_magnitude,experimental_sd=norm_experimental_sd)
       vars=c("calculated_magnitude","experimental_magnitude")
-      vars_label=c("Calculated","Experimental Mean")
+      vars_label=c("Calculated","Experimental")
       melted_df=melt(df, id.vars="mass",measure.vars=vars)
       value=NULL
       variable=NULL
@@ -621,15 +628,68 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
       }
       global_title=paste(cluster,"; S1:",round(s1,2),"; S2:",round(s2,2),"; S3:",round(s3,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))
 
-      plt_spectrum= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value) ) +
-                    geom_linerange(linetype=linetype) + geom_point() + geom_text(aes(label=label,vjust=0)) +
+      plt_spectrum= ggplot(melted_df, aes(mass,value,color=variable,ymin=0,ymax=value)) +
+                    geom_linerange() + geom_point() + theme_bw() +
         # ggtitle(paste(cluster,"; S1:",round(s1,2),"; S2:",round(s2,2),"; S3:",round(s3,2),"; MAX:", round(max(experimental_magnitude,na.rm=T),2))) +
-                    xlab("m/z") + ylab("Normalized Intensity") +
+                    xlab("m/z") + ylab("Scaled Intensity") +
                     scale_colour_discrete(name="",breaks=vars,labels=vars_label)+
-                    theme(legend.position=legend_position)
+                    theme(legend.justification = c(1, 1), legend.position = c(1, 1),panel.border = element_rect(colour = "black", fill=NA), panel.grid.major = element_blank(),
+                          panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0))+
+                    ggtitle("A")
 
       #Image correlation plot
-      plt_image_correl=levelplot(image_correl,at=seq(-1,1,length.out = 100))
+      coul <- viridis(100)
+      w=dim(image_correl)[1]
+      x <-rep(seq(1,w),w)
+      y <-unlist(lapply(seq(1,w),function(x)rep(x,w)))
+      z <-c(image_correl)
+      df<-data.frame(x,y,z)
+      plt_image_correl <- ggplot(df, aes(x, y, fill = z)) + geom_tile() +
+                          xlab("Ion image") + ylab("Ion image") + theme_bw() +
+                          scale_fill_gradientn("",limits = c(0,1), colours=coul) +
+                          scale_x_continuous(breaks = seq(1, w),expand=c(0,0))+scale_y_continuous(breaks = seq(1, w),expand=c(0,0))+
+                          theme(panel.border = element_rect(colour = "black", fill=NA), panel.grid.major = element_blank(),
+                                panel.grid.minor = element_blank(),panel.grid = element_blank(), plot.title = element_text(hjust = 0))+
+                          ggtitle("D")
+
+      #Raw spectrum plot
+      raw_step<-(max(calculated_mass)-min(calculated_mass))/length(calculated_mass)
+      raw_max<-max(calculated_mass)+raw_step
+      raw_min<-min(calculated_mass)-raw_step
+      raw_index<-which((full_spectrum$mass<raw_max)&(full_spectrum$mass>raw_min))
+      raw_mass<-full_spectrum$mass[raw_index]
+      raw_intensity<-full_spectrum$mean[raw_index]
+      df1<-data.frame(x=raw_mass,y=raw_intensity)
+      df2<-data.frame(calculated_mass=calculated_mass,calculated_magnitude=calculated_magnitude*(full_spectrum$mean[which.min(abs(full_spectrum$mass-experimental_mass[which.max(calculated_magnitude)]))])/max(calculated_magnitude)+min(raw_intensity),offset=min(raw_intensity))
+
+      plt_raw <- ggplot(df1) + geom_line(aes(x, y,color="1"))+
+        geom_vline(xintercept = calculated_mass,linetype="dashed",alpha=0.5)+
+        geom_linerange(data=df2,aes(x=calculated_mass,ymin=offset,ymax=calculated_magnitude,color="2")) + geom_point(data=df2,aes(x=calculated_mass,y=calculated_magnitude,color="2"))+
+        scale_color_discrete("Mean spectrum", c("Experimental","Calculated for Ag6"),breaks=c(1,2))+
+        theme_bw()+xlab("m/z")+ylab("Intensity")+
+        #scale_color_discrete("", c(paste("S1 (",round(prc1$auc.integral,2),"AUC )"), paste("S2 (",round(prc2$auc.integral,2),"AUC )"),paste("S1·S2 (",round(prc_product$auc.integral,2),"AUC )")))+
+        scale_x_continuous(breaks = round(calculated_mass,4))+
+        theme(legend.justification = c(1, 1), legend.position = c(1, 1),legend.background=element_rect(size=0.2,colour=1),panel.border = element_rect(colour = "black", fill=NA), panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0))+
+        ggtitle("A")
+
+      indices<-c(1,2)
+      raw_step<-(max(calculated_mass)-min(calculated_mass))/length(calculated_mass)
+      raw_max<-max(calculated_mass[indices])+0.2*raw_step
+      raw_min<-min(calculated_mass[indices])-0.2*raw_step
+      raw_index<-which((full_spectrum$mass<raw_max)&(full_spectrum$mass>raw_min))
+      raw_mass<-full_spectrum$mass[raw_index]
+      raw_intensity<-full_spectrum$mean[raw_index]
+      df<-data.frame(x=raw_mass,y=raw_intensity)
+
+      plt_zoom <- ggplot(df) + geom_line(aes(x, y,color="2"))+
+        theme_bw()+xlab("m/z")+ylab("Intensity")+
+        #scale_color_discrete("", c(paste("S1 (",round(prc1$auc.integral,2),"AUC )"), paste("S2 (",round(prc2$auc.integral,2),"AUC )"),paste("S1·S2 (",round(prc_product$auc.integral,2),"AUC )")))+
+        scale_x_continuous(breaks = round(calculated_mass[indices],4))+
+        theme(legend.position = "none",panel.border = element_rect(colour = "black", fill=NA), panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0))+
+        ggtitle("C")
+
 
       #Recursive exploration plot
       text=""
@@ -642,28 +702,35 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
 
 
       #Create a list with all the plots
-      plts=list(plt_spectrum,plt_image_correl,plt_recursive_exploration)
 
+      plts_peaks=list()
 
       #Print cluster images
+      if(generate_figures)
+        tiff(paste(pks$names[1],".tiff",sep=""), width = 200, height = 100, units = 'mm', res = 300)
+
       page_layout=default_page_layout
       offset=match(4,c(t(page_layout)))-1
       for(i in 1:num_peaks)
       {
         title=paste("m/z",round(calculated_mass[i],pkg_opt("round_digits")))
-        if(is.element(i,index_pks))
-          title=paste(title,round(rel_error[i]*1e6),"ppm")
-        else
-          title=paste(title,"(NOT IN PEAK MATRIX)")
-        plts=c(plts,list(ggplot_peak_image(pks,final_image[,i],title,is.na(experimental_magnitude[i]),chosen[i],is.element(i,index_pks))))
+        # if(is.element(i,index_pks))
+        #   title=paste(title,round(rel_error[i]*1e6),"ppm")
+        # else
+        #   title=paste(title,"(NOT IN PEAK MATRIX)")
+        plts_peaks=c(plts_peaks,list(ggplot_peak_image(pks,final_image[,i],title,is.na(experimental_magnitude[i]),chosen[i],is.element(i,index_pks))))
         if((i+offset)%%length(page_layout)==0||i==num_peaks)
         {
+          plts=c(list(plt_spectrum,plt_image_correl,plt_recursive_exploration),plts_peaks)
           grid.arrange(grobs=plts,layout_matrix=page_layout,top=global_title)
           plts=list()
           offset=0
           page_layout=matrix(1:length(page_layout), ncol = 4)
         }
       }
+
+      if(generate_figures)
+        dev.off()
     }
   }
 
@@ -745,6 +812,14 @@ generate_gt <- function (matrix_formula,pks,full_spectrum=NULL, folder="output/"
     dev.off()
   }
 
+  #Temporal
+  # plts=c(list(plt_raw,grid.arrange(grobs=plts_peaks,nrow=1,top = grid::textGrob("\t B",x=0,hjust=0,gp=grid::gpar(fontsize=13,font="TT Arial"))),plt_zoom,plt_image_correl))
+  plts=c(list(plt_raw,grid.arrange(grobs=plts_peaks,nrow=1,top = grid::textGrob("\t B",x=0,hjust=0,gp=grid::gpar(fontsize=13,font="TT Arial"))),plt_image_correl))
+
+  tiff("/home/gbaquer/msidata/Ag Software Test 1/output/RESULTS/Fig3.tiff", width = 200, height = 300, units = 'mm', res = 300)
+  #print(grid.arrange(grobs=plts,layout_matrix=matrix(c(1,2,3,1,2,4),nrow=3)))
+  print(grid.arrange(grobs=plts,layout_matrix=matrix(c(1,2,3,1,2,3),nrow=3)))
+  dev.off()
   return(results)
 }
 
