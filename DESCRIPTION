@@ -11,32 +11,22 @@ License: file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports: 
-  Rcpp (>= 1.0.0),
   R.utils,
   rMSI,
   rMSIproc,
   gridExtra,
-  viridis,
-  lattice,
   graphics,
   stats,
   grDevices,
   ggrepel,
-  RColorBrewer,
-  viridis,
-  GlobalOptions,
   utils,
   pack,
-  reticulate,
   reshape2,
   ggplot2,
   enviPat,
-  tsne,
   stringr,
   PRROC,
-  Rtsne,
-  caret
-LinkingTo: Rcpp
+  Rtsne
 Suggests: 
     testthat
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.0

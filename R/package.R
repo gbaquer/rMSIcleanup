@@ -5,13 +5,11 @@
 #' @docType package
 #' @author Gerard Baquer Gómez
 #' @exportPattern "^[[:alpha:]]+"
-#' @import Rcpp R.utils rMSIproc gridExtra lattice RColorBrewer viridis ggrepel graphics GlobalOptions pack reticulate ggplot2 reshape2 enviPat tsne PRROC Rtsne caret
+#' @import R.utils rMSIproc gridExtra  ggrepel graphics pack ggplot2 reshape2 enviPat PRROC Rtsne
 #' @importFrom rMSI loadImageSliceFromMass loadImageSliceFromCols
-#' @importFrom Rcpp evalCpp
 #' @importFrom stats cor cov kmeans prcomp sd weighted.mean dist
-#' @importFrom grDevices dev.new dev.off pdf rainbow palette
+#' @importFrom grDevices dev.new dev.off pdf
 #' @importFrom utils write.table read.table data packageVersion
 #' @importFrom stringr str_pad
-#' @useDynLib rMSIcleanup, .registration = TRUE
 #' @name rMSIcleanup
 NULL

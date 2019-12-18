@@ -3,7 +3,6 @@
 \docType{package}
 \name{rMSIcleanup}
 \alias{rMSIcleanup}
-\alias{rMSIcleanup-package}
 \title{rMSIcleanup}
 \description{
 Anotation and removal of the matrix peaks in MALDI data

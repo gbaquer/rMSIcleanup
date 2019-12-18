@@ -42,20 +42,20 @@
 #' @param LOCAL Change to from global to local mode when TRUE and change from local to global mode when FALSE. In the local mode a copy of the options is created and the copy is modified.
 #' @param ADD Add a new option on the fly
 
-pkg_opt= set_opt(
-  verbose_level=list(.value=1,
-                     .read.only=FALSE,
-                     .validate= function(x) is.numeric(x) && x%%1==0 && x>=-3 && x<=1,
-                     .failed_msg = "Verbose should be an integer in the range [-3,1]",
-                     .description = "Verbose level determining which level of information is printed or plotted"
-  ),
-  round_digits=list(.value=4,
-                     .read.only=FALSE,
-                     .validate= function(x) is.numeric(x) && x%%1==0 && x>=0,
-                     .failed_msg = "Round digits should be a positive integer",
-                     .description = "Number of digits to be used in all the printing functions"
-  )
-)
+# pkg_opt= set_opt(
+#   verbose_level=list(.value=1,
+#                      .read.only=FALSE,
+#                      .validate= function(x) is.numeric(x) && x%%1==0 && x>=-3 && x<=1,
+#                      .failed_msg = "Verbose should be an integer in the range [-3,1]",
+#                      .description = "Verbose level determining which level of information is printed or plotted"
+#   ),
+#   round_digits=list(.value=4,
+#                      .read.only=FALSE,
+#                      .validate= function(x) is.numeric(x) && x%%1==0 && x>=0,
+#                      .failed_msg = "Round digits should be a positive integer",
+#                      .description = "Number of digits to be used in all the printing functions"
+#   )
+# )
 
 #' Plot text
 #'
@@ -88,19 +88,13 @@ plot_text <- function(text,size=3)
 #' @param chosen Is chosen
 #' @param in_pksMat Is in pksMat
 #'
-ggplot_peak_image <- function(pks,values=NA,title="",isNA=F,chosen=T,in_pksMat=T)
+ggplot_peak_image <- function(pks,values=NA,title="",type="matrix",in_pks=T)
 {
-  # zplots<-matrix(NA, nrow=max(pks$pos[,1]), ncol=max(pks$pos[,2]))
-  # for( i in 1:nrow(pks$pos))
-  # {
-  #   zplots[pks$pos[ i , 1 ], pks$pos[ i , 2 ]] <- values[i]
-  # }
-  #levelplot(zplots)
   x=NULL
   y=NULL
   z=NULL
-  coul <- viridis(100)
-  if(isNA)
+  coul <- viridis
+  if(F)
   {
     p=ggplot() + geom_label()+ annotate("text", x = 0, y = 0, size=5, label = "NA") +
       ggtitle(title) +
@@ -112,30 +106,34 @@ ggplot_peak_image <- function(pks,values=NA,title="",isNA=F,chosen=T,in_pksMat=T
   }
   else
   {
-    if(chosen)
-      background=element_rect(fill = "#45F442FF")
-    else
-      background=element_rect(fill = "#F46242FF")
-    # if(in_pksMat)
-    #   if(chosen)
-    #     background=element_rect(fill = "#45F442FF")
-    #   else
-    #     background=element_rect(fill = "#F46242FF")
-    # else
-    #   background=element_rect(fill = "#918A88FF")
+    if(!in_pks)
+      background=element_rect(fill = "gray")
+    else{
+      if(type=="matrix")
+        background=element_rect(fill = "green")
+      if(type=="overlapped_matrix")
+        background=element_rect(fill = "blue")
+      if(type=="not_matrix")
+        background=element_rect(fill = "red")
+    }
 
     df=data.frame(x=pks$pos[,2],y=pks$pos[,1],z=values)
     p=ggplot(df, aes(x, y, fill = z)) + geom_raster() +
       coord_fixed(1,expand = F) +
       ggtitle(title) +
-      # scale_fill_gradientn(colours=append("#000000FF",rev(rainbow(200,start=5.5/6,end=4.2/6)))) +
-      scale_fill_gradientn(colours=coul)+
-      theme(axis.line=element_blank(),axis.text.x=element_blank(),
-            axis.text.y=element_blank(),axis.ticks=element_blank(),
-            axis.title.x=element_blank(),
-            axis.title.y=element_blank(),legend.position="none",
-            panel.background=element_rect(fill = "#000000FF"),panel.border=element_blank(),panel.grid.major=element_blank(),
-            panel.grid.minor=element_blank(),plot.background=background,plot.title = element_text(hjust = 0.5,size=9))
+      scale_fill_gradientn(colours=coul)
+    only_image=F
+    if(only_image)
+      p<-p+theme_void()+theme(legend.position="none",
+                              panel.background=element_rect(fill = "#000000FF"))
+
+    else
+      p<-p+theme(axis.line=element_blank(),axis.text.x=element_blank(),
+          axis.text.y=element_blank(),axis.ticks=element_blank(),
+          axis.title.x=element_blank(),
+          axis.title.y=element_blank(),legend.position="none",
+          panel.background=element_rect(fill = "#000000FF"),panel.border=element_blank(),panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),plot.background=background,plot.title = element_text(hjust = 0.5,size=9))
   }
   return(p)
 }
@@ -186,7 +184,7 @@ find_first_lt <- function(x,k) match(T,x<k)
 #'
 #' @return Matrix containing the masses processed along with the cluster to which each of them is assigned
 #'
-#' @export
+#'
 
 spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), num_clus=3, f=mean,generate_pdf=F, normalization="None",legend_pos="topright")
 {
@@ -257,7 +255,7 @@ spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), 
     image=apply(pks$intensity[,which(clus$cluster==i)],1,f)
     #rMSIproc::plotValuesImage( peakMatrix = pks, values = image,labels = labels[i])
     plts=append(plts,list(ggplot_peak_image(pks,image,labels[i])))
-    text=add_entry("",paste(round(pks$mass[which(clus$cluster==i)],pkg_opt("round_digits")),collapse=" ; "))
+    text=add_entry("",paste(round(pks$mass[which(clus$cluster==i)],2),collapse=" ; "))
     plts=append(plts,list(plot_text(text)))
     if(i%%2==0||i==length(clus$withins))
     {
@@ -287,7 +285,7 @@ spectral_clustering <- function(pks, mass_range=c(min(pks$mass),max(pks$mass)), 
 #'
 #' @return File name that is not used in the
 #'
-#' @export
+#'
 
 generate_file_name <- function(base_name, extension=".pdf",folder="output/")
 {
@@ -310,7 +308,7 @@ generate_file_name <- function(base_name, extension=".pdf",folder="output/")
 #'
 #' @return Updated text variable with the new entry
 #'
-#' @export
+#'
 
 add_entry <- function(text,...)
 {
@@ -335,7 +333,7 @@ add_entry <- function(text,...)
 #'
 #' @return Peak matrix containing only the first image from pks
 #'
-#' @export
+#'
 get_one_peakMatrix <- function(pks,i=1)
 {
   if(length(pks$numPixels)>1)
@@ -371,7 +369,7 @@ get_one_peakMatrix <- function(pks,i=1)
 #'
 #' @return Peak matrix containing only the first image from pks
 #'
-#' @export
+#'
 get_columns_peakMatrix <- function(pks,cols=seq_along(pks$mass))
 {
   pks$mass=pks$mass[cols]
@@ -390,7 +388,7 @@ get_columns_peakMatrix <- function(pks,cols=seq_along(pks$mass))
 #'
 #' @return Peak matrix containing only the first image from pks
 #'
-#' @export
+#'
 get_closest_peak <- function(calc_masses,experimental_masses)
   apply(abs(outer(calc_masses,experimental_masses,'-')),1,function(x) sort(x,index.return=TRUE)$ix[1])
 
@@ -503,6 +501,27 @@ centroid2peakmatrix <- function(file_path)
   rel_error=lapply(mass_Ag,function(m) min(abs((pks_mass-m)/pks_mass)))
   tol=5-6
   print(name_Ag[which(rel_error<tol)])
+}
+
+normalize <- function(x){
+  return((x-min(x))/(max(x)-min(x)))
+}
+ggplot_rgb <- function(pos,rgb_data,v=c(1,1,1)){
+  names(rgb_data) <- paste("V",1:length(names(rgb_data)),sep="")
+  return(ggplot(data=rgb_data, aes(x=pos[,1], y=pos[,2], fill=rgb(normalize(V1)*v[1],normalize(V2)*v[2],normalize(V3)*v[3]))) +
+           geom_tile() + scale_fill_identity()+ coord_fixed() + scale_y_reverse()+theme_void()+
+           theme(panel.background = element_rect(fill = "black")))
+}
+ggplot_clusters <- function(pos,clus){
+  tmp=as.data.frame(clus)
+  return(ggplot(data=tmp, aes(x=pos[,1], y=pos[,2], fill=clus+1)) +
+           geom_tile() + scale_fill_identity()+ coord_fixed() + scale_y_reverse()+theme_void()+
+           theme(panel.background = element_rect(fill = "black")))
+}
+ggplot_scatter <- function(data){
+  names(data) <- paste("V",1:length(names(data)),sep="")
+  return(ggplot(data=data, aes(x=V1, y=V2, colour=normalize(1:length(V1)))) +
+           geom_point() + coord_fixed() + scale_y_reverse()+theme_void()+scale_color_gradientn(colours = rainbow(5)))
 }
 
 # if(is.na(s))

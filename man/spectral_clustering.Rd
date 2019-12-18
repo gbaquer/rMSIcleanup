@@ -4,9 +4,15 @@
 \alias{spectral_clustering}
 \title{Generate report spectral clustering}
 \usage{
-spectral_clustering(pks, mass_range = c(min(pks$mass), max(pks$mass)),
-  num_clus = 3, f = mean, generate_pdf = F, normalization = "None",
-  legend_pos = "topright")
+spectral_clustering(
+  pks,
+  mass_range = c(min(pks$mass), max(pks$mass)),
+  num_clus = 3,
+  f = mean,
+  generate_pdf = F,
+  normalization = "None",
+  legend_pos = "topright"
+)
 }
 \arguments{
 \item{pks}{Input Peak Matrix}

@@ -4,8 +4,7 @@
 \alias{ggplot_peak_image}
 \title{Plot peak image}
 \usage{
-ggplot_peak_image(pks, values = NA, title = "", isNA = F,
-  chosen = T, in_pksMat = T)
+ggplot_peak_image(pks, values = NA, title = "", type = "matrix", in_pks = T)
 }
 \arguments{
 \item{pks}{Peak matrix}

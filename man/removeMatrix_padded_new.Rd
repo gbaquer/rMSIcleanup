@@ -4,8 +4,14 @@
 \alias{removeMatrix_padded_new}
 \title{Remove Matrix Padded New}
 \usage{
-removeMatrix_padded_new(pks, normalize = TRUE, matrix_cor = 0.65,
-  tissue_cor = 0.6, exo_method = 1, max_exo = 10)
+removeMatrix_padded_new(
+  pks,
+  normalize = TRUE,
+  matrix_cor = 0.65,
+  tissue_cor = 0.6,
+  exo_method = 1,
+  max_exo = 10
+)
 }
 \arguments{
 \item{pks}{Peak Matrix}

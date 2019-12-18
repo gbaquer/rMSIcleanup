@@ -4,8 +4,12 @@
 \alias{removeMatrix_compareAu}
 \title{Remove Matrix Compare Au}
 \usage{
-removeMatrix_compareAu(pks_Norharmane, pks_Au, use_average = FALSE,
-  align_calib = "rMSIproc")
+removeMatrix_compareAu(
+  pks_Norharmane,
+  pks_Au,
+  use_average = FALSE,
+  align_calib = "rMSIproc"
+)
 }
 \arguments{
 \item{pks_Norharmane}{Peak Matrix}

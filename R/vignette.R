@@ -3,7 +3,6 @@
 #' PTest whether the peaks are correct or not
 #'
 #'
-#' @export
 test_centroid_processing <- function()
 {
   #Test with pks List

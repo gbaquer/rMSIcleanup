@@ -1,6 +1,8 @@
 #########################################################################
 #
-#    USAGE MODULE
+#     Application Programming Interface (API)
+#
+#     All exported methods are included here
 #
 #########################################################################
 #     rMSIcleanup - R package for MSI matrix removal

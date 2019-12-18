@@ -4,8 +4,12 @@
 \alias{is_within_scan_tol}
 \title{Quiet}
 \usage{
-is_within_scan_tol(experimental_mass, calculated_mass,
-  full_spectrum_masses, tol_scans)
+is_within_scan_tol(
+  experimental_mass,
+  calculated_mass,
+  full_spectrum_masses,
+  tol_scans
+)
 }
 \arguments{
 \item{experimental_mass}{Experimental mass}

@@ -4,11 +4,17 @@
 \alias{generate_pdf_from_file}
 \title{Generate PDF report}
 \usage{
-generate_pdf_from_file()
+generate_pdf_from_file(folder = "RESULTS")
+
+generate_pdf_from_file(folder = "RESULTS")
 }
 \value{
 None
+
+None
 }
 \description{
+Generate PDF report
+
 Generate PDF report
 }

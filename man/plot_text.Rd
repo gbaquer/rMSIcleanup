@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_module.R
 \name{plot_text}
 \alias{plot_text}
-\title{Plot text}
+\title{Package Global Options}
 \usage{
 plot_text(text, size = 3)
 }
@@ -10,7 +10,32 @@ plot_text(text, size = 3)
 \item{text}{Text to be plotted}
 
 \item{size}{Size of the text}
+
+\item{...}{Options to change}
+
+\item{RESET}{Reset the package options to the default}
+
+\item{READ.ONLY}{Return only the READ.ONLY options}
+
+\item{LOCAL}{Change to from global to local mode when TRUE and change from local to global mode when FALSE. In the local mode a copy of the options is created and the copy is modified.}
+
+\item{ADD}{Add a new option on the fly
+Plot text
+
+Plots text with white background}
 }
 \description{
-Plots text with white background
+Global options used by the package
 }
+\section{verbose_level}{
+
+Verbose level determining which level of information is printed or plotted
+\itemize{
+ \item  1: Silent
+ \item  0: Application messages
+ \item -1: Code Sections
+ \item -2: Code subsections
+ \item -3: Debug mode
+}
+}
+

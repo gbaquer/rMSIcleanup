@@ -39,19 +39,122 @@ ratios_experiment <- function ()
           "/home/gbaquer/msidata/Ag Software Test 1/images/5s-Ag_B73-maize-root_sec-13_pos/mergeddata-peaks.zip",
           "/home/gbaquer/msidata/Ag Software Test 1/images/5s-Ag_B73-maize-root_sec-14_neg/mergeddata-peaks.zip")
   pks_i<-c(1,2,1,1,1,1,1,2,1,2,1,1,1,1)
-  tol_ppm = 100e-6
+  pks_list<-list()
+  tol_ppm = 200e-6
   results = matrix(0,length(files),length(masses))
+  indices = matrix(0,length(files),length(masses))
   for(i in 1:length(files)){
     pks<-rMSIproc::LoadPeakMatrix(files[i])
     pks<-get_one_peakMatrix(pks,pks_i[i])
+    pks_list<-append(pks_list,list(pks))
     mean_spectrum <- apply(pks$intensity,2,mean)
     for(j in 1:length(masses)){
       rel_error=(abs((pks$mass-masses[j])/masses[j]))
       if(min(rel_error)<tol_ppm){
+        indices[i,j]=which.min(rel_error)
         results[i,j]=mean_spectrum[which.min(rel_error)]
       }
     }
   }
+
+  #Plotting
+  #cr <- readRDS("~/msidata/Ag Software Test 1/cluster_ratios.rds")
+  cr<-results
+  cr <- cr[1:10,]
+  normalized_cr<-t(apply(cr, 1, function(x)(x-min(x))/(max(x)-min(x))))
+  output_dir="/home/gbaquer/msidata/Ag Software Test 1/output/RESULTS/"
+  #Fig A Patterns Coloured by 1-3 4-6 7-10 (11-12 13-14)
+  tiff(paste(output_dir,"FigSXA_cluster_spectra.tiff",sep=""), width = 100, height = 100, units = 'mm', res = 300)
+
+  legend_labels <- c("Run 1 (Datasets 1-2)", "Run 2 (Dataset 3)", "Run 3 (Datasets 4-6)","Run 4 (Datasets 7-10)", "TOF 4 (Datasets 11-12)(external)", "Orbitrap (Datasets 13-14)(external)")
+  legend_labels <- legend_labels[1:4]
+  df <- data.frame(x=rep(round(masses,4),each=dim(cr)[1]),y=c(normalized_cr),z=factor(c("run1","run1","run2","run3","run3","run3","run4","run4","run4","run4","run5","run5","run6","run6")[1:10]))
+  p_a<-ggplot(df)  + geom_vline(xintercept = df$x,linetype="dashed",alpha=0.5)+
+    geom_point(aes(x, y, color=z))+
+    theme_bw()+xlab("m/z")+ylab("Intensity")+
+    scale_color_discrete("Experimental run", legend_labels,breaks=factor(c("run1","run2","run3","run4","run5","run6"))[1:4])+
+    scale_x_continuous(breaks=round(masses,4),labels=labels)+
+    scale_y_continuous(breaks = seq(0, 1, by = 0.2))+
+    theme(legend.justification = c(1, 1), legend.position = c(1, 1),legend.background=element_rect(size=0.2,colour=1),panel.border = element_rect(colour = "black", fill=NA), panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0))+
+    ggtitle("A")
+  print(p_a)
+
+  dev.off()
+  #Fig B S1 between datasets
+  cr <- results
+  S1_matrix=matrix(0,14,14)
+  for(i in 1:14)
+    for(j in i:14){
+      S1_matrix[i,j]=compute_s1(cr[i,],cr[j,],"euclidean")
+      S1_matrix[j,i]=S1_matrix[i,j]
+    }
+  levelplot(S1_matrix, col.regions = viridis(100))
+  S1_matrix<-S1_matrix[1:10,1:10]
+  tiff(paste(output_dir,"FigSXB_cluster_S1.tiff",sep=""), width = 100, height = 100, units = 'mm', res = 300)
+  w=dim(S1_matrix)[1]
+  x <-rep(seq(1,w),w)
+  y <-unlist(lapply(seq(1,w),function(x)rep(x,w)))
+  z <-c(S1_matrix)
+  df<-data.frame(x,y,z)
+  p_b <- ggplot(df, aes(x, y, fill = z)) + geom_tile() +
+    theme_bw() +
+    scale_fill_gradientn("S1",limits = c(0,1), colours=viridis(100)) +
+    scale_x_continuous(breaks = seq(1, w),expand=c(0,0))+scale_y_continuous(breaks = seq(1, w),expand=c(0,0))+
+    theme(panel.border = element_rect(colour = "black", fill=NA), panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),panel.grid = element_blank(), plot.title = element_text(hjust = 0))+
+    labs(title = "B", x = "Dataset", y = "Dataset")
+  print(p_b)
+  dev.off()
+  #Fig C S2 of all images vs S2 of several random 10 peaks.
+  mean_cor=rep(0,14)
+  mean_random_cor=matrix(0,14,100)
+  for(i in 1:14){
+    cor_matrix=cor(pks_list[[i]]$intensity[,indices[i,]])
+    mean_cor[i]=mean(cor_matrix)
+    mean_random_cor[i,]=rep(0,100)
+    for(j in 1:100){
+      cor_matrix=cor(pks_list[[i]]$intensity[,sample(1:length(pks_list[[i]]$mass),9)])
+      mean_random_cor[i,j]=mean(cor_matrix)
+    }
+  }
+
+  tiff(paste(output_dir,"FigSXC_cluster_spectra.tiff",sep=""), width = 100, height = 100, units = 'mm', res = 300)
+  values=c(rbind(t(mean_random_cor),mean_cor))
+  #legend_labels <- c("Run 1 (Datasets 1-2)", "Run 2 (Dataset 3)", "Run 3 (Datasets 4-6)","Run 4 (Datasets 7-10)", "TOF 4 (Datasets 11-12)(external)", "Orbitrap (Datasets 13-14)(external)")
+  #legend_labels <- legend_labels[1:4]
+  df <- data.frame(x=factor(rep(1:14,each=101)),y=values,z=factor(c(rep("rand",100),"silver")))
+  p_c<-ggplot(df,aes(x, y))  + #geom_vline(xintercept = df$x,linetype="dashed",alpha=0.5)+
+    geom_point(aes(color=z))+
+    geom_boxplot(outlier.shape = NA, aes(color="rand"))+
+    theme_bw()+xlab("Dataset")+ylab("Mean Correlation")+
+    scale_color_discrete("Experimental run", c("Ag peaks","Random peaks"),breaks=factor(c("silver","rand")))+
+    #scale_x_continuous(breaks=round(masses,4),labels=labels)+
+    scale_y_continuous(breaks = seq(0, 1, by = 0.2))+
+    theme(legend.justification = c(0, 0), legend.position = c(0, 0),legend.background=element_rect(size=0.2,colour=1),panel.border = element_rect(colour = "black", fill=NA), panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0))+
+    ggtitle("C")
+  print(p_c)
+
+  dev.off()
+
+  #Fig D Example 9 images
+  tiff(paste(output_dir,"FigSXD_example.tiff",sep=""), width = 100, height = 100, units = 'mm', res = 300)
+
+  i=5
+  plts=list()
+  for(j in indices[i,])
+  {
+    plts=append(plts,list(rMSIcleanup::ggplot_peak_image(pks_list[[i]],pks_list[[i]]$intensity[,j],only_image = T)))
+  }
+  p_d<-grid.arrange(grobs=c(plts),nrow=3,padding = 2)
+  print(p_d)
+  dev.off()
+
+  tiff(paste(output_dir,"FigSX.tiff",sep=""), width = 200, height = 200, units = 'mm', res = 300)
+  p_final<-grid.arrange(grobs=c(list(p_a,p_b,p_c,p_d)),nrow=2)
+  print(p_final)
+  dev.off()
   return(results)
 }
 #' Batch experiment
@@ -61,7 +164,7 @@ ratios_experiment <- function ()
 #' @return None
 #'
 #'
-#' @export
+
 batch_experiment <- function ()
 {
   halogens=c("F1","Cl1","Br1","I1")
@@ -359,7 +462,6 @@ LUMC_experiment <- function ()
 #' @inheritParams generate_gt
 #'
 #'
-#' @export
 run_experiment <- function (matrix_formula="Ag1", base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1"),
                             s1_threshold=0.80,s2_threshold=0.80, s3_threshold=0.7, similarity_method="euclidean", correlation_method="pearson", experiment_name="output",
                             MALDI_resolution=20000, tol_mode="scans",tol_ppm=100e-6,tol_scans=4,
@@ -444,7 +546,6 @@ run_experiment <- function (matrix_formula="Ag1", base_dirs=c("C:/Users/Gerard/D
 #' @return None
 #'
 #'
-#' @export
 generate_before_after <- function () {
   #1. Open File
   base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1")
@@ -485,7 +586,7 @@ generate_before_after <- function () {
 #' @return None
 #'
 #'
-#' @export
+
 tsne_before_after <- function (a=1,max_iter=5000,initial_dims=100, pca=TRUE, perplexity=20, eta=100, theta=0.5) {
   #1. Open File
   base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1")
@@ -570,7 +671,7 @@ tsne_before_after <- function (a=1,max_iter=5000,initial_dims=100, pca=TRUE, per
 #' @return None
 #'
 #'
-#' @export
+
 before_after <- function (a=1,max_iter=1000,initial_dims=100, pca=TRUE, perplexity=35, eta=100, theta=0.5, centers=3, normalization="None",only_pca=T) {
   #1. Open File
   base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1")
@@ -755,7 +856,7 @@ ggplot_scatter <- function(data){
 #' @return None
 #'
 #'
-#' @export
+
 generate_pdf_from_file <- function (folder="RESULTS") {
   base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1")
   base_dir=base_dirs[which(dir.exists(base_dirs))][1]
@@ -787,7 +888,7 @@ generate_single_cluster<-function(folder="/home/gbaquer/msidata/Ag Software Test
 #' @return None
 #'
 #'
-#' @export
+
 generate_pdf <- function (results,experiment_dir,info=experiment_dir) {
   #Open pdf
   #Generate pdf name [pks$name_001]
@@ -1109,7 +1210,7 @@ test_single_file <- function(){
 #' @return None
 #'
 #'
-#' @export
+
 generate_pdf_from_file <- function (folder="RESULTS") {
   base_dirs=c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1","/home/gbaquer/msidata/Ag Software Test 1")
   base_dir=base_dirs[which(dir.exists(base_dirs))][1]
@@ -1124,6 +1225,11 @@ generate_pdf_from_file <- function (folder="RESULTS") {
   generate_pdf(results,output_dir,results_path)
 }
 
+generate_cluster_ratio_figure<-function()
+{
+
+}
+
 #' Generate PDF report
 #'
 #' Generate PDF report
@@ -1133,7 +1239,7 @@ generate_pdf_from_file <- function (folder="RESULTS") {
 #' @return None
 #'
 #'
-#' @export
+
 generate_figures <- function (folder="RESULTS") {
   #1. LOAD RESULTS
   results_path = paste("/home/gbaquer/msidata/Ag Software Test 1/output/",folder,"/global_results_000.rds",sep="")
@@ -1503,7 +1609,7 @@ test_single_file <- function(){
 #' @return None
 #'
 #'
-#' @export
+
 test_paraffin <- function () {
   #Load images
   pks_Paraffin <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Parafina Software Test 1/images/20160719_TOF_Au_TumorFrescVsDespar/mergeddata-peaks.zip")
@@ -1527,7 +1633,7 @@ test_paraffin <- function () {
 #' @return None
 #'
 #'
-#' @export
+
 cross_validation <- function () {
   #LOAD DATA
   #pks_Ag <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-mergeddata-peaks.zip")
@@ -1581,7 +1687,7 @@ cross_validation <- function () {
 #' @return None
 #'
 #'
-#' @export
+
 benchmark <- function () {
   #LOAD DATA
   pks_Ag <- rMSIproc::LoadPeakMatrix("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/comparativa_Ag_Au/postcode3/20160801-BrainCPF-Ag-mergeddata-peaks.zip")

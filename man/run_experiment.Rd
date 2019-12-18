@@ -4,53 +4,35 @@
 \alias{run_experiment}
 \title{Run experiment}
 \usage{
-run_experiment(matrix_formula,
+run_experiment(
+  matrix_formula = "Ag1",
   base_dirs = c("C:/Users/Gerard/Documents/1. Uni/1.5. PHD/images/Ag Software Test 1",
-  "/home/gbaquer/msidata/Ag Software Test 1"), s1_threshold = 0.8,
-  s2_threshold = 0.8, s3_threshold = 0.7,
-  similarity_method = "euclidean", MALDI_resolution = 20000,
-  tol_mode = "ppm", tol_ppm = 2e-04, tol_scans = 4,
-  mag_of_interest = "intensity", normalization = "None",
-  max_multi = 10, add_list = NULL, sub_list = NULL,
-  isobaric_detection = T, save_results = T, generate_pdf = T,
-  default_page_layout = NULL, include_summary = F,
-  dataset_indices = NULL)
+    "/home/gbaquer/msidata/Ag Software Test 1"),
+  s1_threshold = 0.8,
+  s2_threshold = 0.8,
+  s3_threshold = 0.7,
+  similarity_method = "euclidean",
+  correlation_method = "pearson",
+  experiment_name = "output",
+  MALDI_resolution = 20000,
+  tol_mode = "scans",
+  tol_ppm = 1e-04,
+  tol_scans = 4,
+  mag_of_interest = "intensity",
+  normalization = "None",
+  max_multi = 10,
+  add_list = NULL,
+  sub_list = NULL,
+  isobaric_detection = T,
+  save_results = T,
+  generate_pdf = T,
+  generate_figures = F,
+  default_page_layout = NULL,
+  include_summary = F,
+  dataset_indices = NULL
+)
 }
 \arguments{
-\item{matrix_formula}{String giving the chemical formula of the matrix in the enviPat notation}
-
-\item{s1_threshold}{Correlation between the theoretical and the real spectral pattern above which a given cluster is considered to be present}
-
-\item{s2_threshold}{Correlation between the spatial images of the peak in a cluster above which the peaks are included in the gold truth (gt)}
-
-\item{s3_threshold}{Correlation between the spatial images of the peak in a cluster above which the peaks are included in the gold truth (gt)}
-
-\item{similarity_method}{Similarity method to be used in the computation of the distance}
-
-\item{MALDI_resolution}{MALDI resolution that is used to merge nearby peaks in-silico as the equipment would in real life}
-
-\item{tol_mode}{String determining the tolerance mode to be used when comparing the calculated masses with the experimental ones. "ppm": relative tolerance with respect to the calculated one in parts per million. "scans": Number of scans or datapoints present in the full spectrum -It is only applicable if full_spectrum is provided.}
-
-\item{tol_ppm}{Tolerance in parts per million. Only used if tol_mode="ppm".}
-
-\item{tol_scans}{Tolerance in number of scans. Only used if tol_mode="scans".}
-
-\item{mag_of_interest}{Magnitude of interest to use when performing the study. It can be "intensity" or "area".}
-
-\item{normalization}{String indicating the normalization technique to use. Possible values: "None", "TIC","RMS", "MAX" or "AcqTic"}
-
-\item{max_multi}{Maximum Cluster Multiplication. For each adduct -Adduct- it will generate a set of base formulas as follows: M+Adduct, 2M+Adduct, 3M+Adduct ... max_multi*M + Adduct}
-
-\item{add_list}{List of adducts to be added to the matrix formula in the format defined by enviPat. Example: c("H1","Na1","K1")}
-
-\item{sub_list}{List of compounds to be substracted to the matrix formula in the format defined by enviPat. Example: c("H1",H2O1")}
-
-\item{generate_pdf}{Boolean indicating whether to generate a pdf report or not}
-
-\item{default_page_layout}{Page layout to be used in the pdf plotting.}
-
-\item{include_summary}{Boolean value indicating if the summary is to be included in the pd}
-
 \item{dataset_indices}{Vector containing the indices of the datasets to be used}
 
 \item{base_dir}{Base directory where the images are stored and the output reports should be stored}

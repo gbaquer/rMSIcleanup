@@ -36,7 +36,7 @@
 #' @return List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
 #'
 #'
-#' @export
+#'
 removeMatrix_padded_new <- function (pks,normalize=TRUE,matrix_cor=0.65,tissue_cor=0.6,exo_method=1,max_exo=10) {
 
   #SECTION 0 :: Preprocessing
@@ -78,7 +78,7 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE,matrix_cor=0.65,tissue_c
   #[PENDING]
 
   #Plotting results
-  if(pkg_opt()$verbose_level<=-1)
+  if(-10<=-1)
   {
     dev.new()
     rMSIproc::plotClusterImage(pks,clus$cluster)
@@ -190,7 +190,7 @@ removeMatrix_padded_new <- function (pks,normalize=TRUE,matrix_cor=0.65,tissue_c
 #' @return List of mass indices considered to be endogenous. The rest of the peaks are deamed as matrix related or non-anatomically relevant.
 #'
 #'
-#' @export
+#'
 removeMatrix_padded <- function (pks_Norharmane) {
   #SECTION 1:: Peak Selection
 
@@ -273,7 +273,7 @@ removeMatrix_padded <- function (pks_Norharmane) {
   #[To Be Implemented]
 
   #Plotting results
-  if(pkg_opt()$verbose_level<=-1)
+  if(-10<=-1)
   {
     centers=10
     palette(brewer.pal(n=centers,name = "Paired"))
@@ -326,7 +326,7 @@ removeMatrix_padded <- function (pks_Norharmane) {
 #'
 #'
 #'
-#' @export
+#'
 removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE,align_calib="rMSIproc") {
   #SECTION 1:: Get regions of similarity
   regions <- list(
@@ -501,7 +501,7 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE,ali
   correlation_vector=correlation_vector[!is.na(correlation_vector)] #Remove NA values
 
   #SECTION 5:: Plotting results
-  if(pkg_opt()$verbose_level<=-1)
+  if(-10<=-1)
   {
     # d<-density(correlation_vector)
     # dev.new()
@@ -527,7 +527,7 @@ removeMatrix_compareAu <- function (pks_Norharmane,pks_Au, use_average=FALSE,ali
 #'
 #'
 #'
-#' @export
+#'
 removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,normalize=TRUE) {
 
   # SECTION 1 :: Preprocessing
@@ -577,7 +577,7 @@ removeMatrix_kMeansTranspose <- function (pks_Norharmane,correlation=FALSE,norma
 
 
   # SECTION 4 :: Plotting
-  if(pkg_opt()$verbose_level<=-1)
+  if(-10<=-1)
   {
     dev.new()
     #rMSIproc::plotPeakImage(pks_cluster_mean,c=1)
