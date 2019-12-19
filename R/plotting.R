@@ -298,7 +298,7 @@ generate_pdf_report <- function (results, pks, full=NULL, filename=results$metad
       plt_raw <- ggplot(df1) + geom_line(aes(x, y,color="1"))+
         geom_vline(xintercept = calculated_mass,linetype="dashed",alpha=0.5)+
         geom_linerange(data=df2,aes(x=calculated_mass,ymin=offset,ymax=calculated_magnitude,color="2")) + geom_point(data=df2,aes(x=calculated_mass,y=calculated_magnitude,color="2"))+
-        scale_color_discrete("Mean spectrum", c("Experimental","Calculated for Ag6"),breaks=c(1,2))+
+        scale_color_discrete("Mean spectrum", c("Experimental","Calculated"),breaks=c(1,2))+
         theme_bw()+xlab("m/z")+ylab("Intensity")+
         #scale_color_discrete("", c(paste("S1 (",round(prc1$auc.integral,2),"AUC )"), paste("S2 (",round(prc2$auc.integral,2),"AUC )"),paste("S1·S2 (",round(prc_product$auc.integral,2),"AUC )")))+
         scale_x_continuous(breaks = round(calculated_mass,4))+
@@ -334,7 +334,7 @@ generate_pdf_report <- function (results, pks, full=NULL, filename=results$metad
 
       #Create a list with all the plots
 
-      plts=c(list(plt_spectrum,plt_image_correl))
+      plts=c(list(plt_raw,plt_image_correl))
 
 
       page_layout=default_page_layout
