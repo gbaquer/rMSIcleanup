@@ -22,20 +22,41 @@ This will install rMSIcleanup package and all of its dependencies in your R envi
 
 ### 2. Basic Usage
 ```R
-## 2.0. Load Data
+## 2.1. Load Data
 pks<-rMSIproc::LoadPeakMatrix("/home/gbaquer/msidata/Ag Software Test 1/images/20150526_TOF_Ag_KIDNEY/mergeddata-peaks.zip")
 full<-rMSI::LoadMsiData("/home/gbaquer/msidata/Ag Software Test 1/images/20150526_TOF_Ag_KIDNEY/2015-05-26-KIDNEY-Ag-proc.tar")
 
-## 2.1. Annotate Matrix
+## 2.2. Annotate Matrix
 results<-rMSIcleanup::annotate_matrix(pks,"Ag1",full)
 
-## 2.2. Generate Report
+## 2.3. Generate Report
 rMSIcleanup::generate_pdf_report(results,pks,full,"test",folder="/home/gbaquer/")
 
-## 2.3. Remove Matrix
+## 2.4. Remove Matrix
 pks_clean<-rMSIcleanup::remove_matrix(pks,results)
 
-# 2.4. Store Results
+# 2.5. Store Results
 rMSIproc::StorePeakMatrix("before.zip",pks)
 rMSIproc::StorePeakMatrix("after.zip",pks_clean)
 ```
+### 3. Downloading sample data
+To easily try out the functionality of the package we provide a sample dataset available at github.com/gbaquer/MSI_Data 
+
+You can either download it manually or automatically using the following R Script: 
+```R
+## 3.0. Download Sample Data
+url <- "url"
+tmpfile <- tempfile()
+tmpdir <- tempdir()
+download.file(url, destfile=tmpfile)
+```
+
+### 4. Processing your own imzML
+rMSIcleanup uses data in the rMSIproc format. To annotate your own data you will have to process the imzML using the following command:
+
+```R
+> rMSIproc::ProcessWizard()
+```
+A window will appear where you can set up all the processing parameters, the input data and the output directory to store the results.
+
+Refer to rMSIproc for further details (https://github.com/prafols/rMSIproc)
