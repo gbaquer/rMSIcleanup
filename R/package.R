@@ -4,7 +4,6 @@
 #'
 #' @docType package
 #' @author Gerard Baquer Gómez
-#' @exportPattern "^[[:alpha:]]+"
 #' @import R.utils rMSIproc gridExtra  ggrepel graphics pack ggplot2 reshape2 enviPat PRROC Rtsne
 #' @importFrom rMSI loadImageSliceFromMass loadImageSliceFromCols
 #' @importFrom stats cor cov kmeans prcomp sd weighted.mean dist

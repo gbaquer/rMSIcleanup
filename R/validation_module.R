@@ -60,7 +60,7 @@ annotate_matrix <- function (pks,matrix_formula,full_spectrum=NULL, normalizatio
                               min_multi=1,max_multi=10,  detect_overlapping=T) {
 
   #SECTION 0 :: Preprocessing
-  metadata=list(pks_name=pks$names,full_name=full$name,normalization=normalization,
+  metadata=list(pks_name=pks$names,full_name=full$name,matrix_formula=matrix_formula, normalization=normalization,
                 num_pixels=pks$numPixels,num_peaks=length(pks$mass),min_mass=min(pks$mass),max_mass=max(pks$mass),
                 add_list=add_list,sub_list=sub_list,max_charge=max_charge,
                 analyzer_resolution=analyzer_resolution, tol_mode=tol_mode,tol_ppm=tol_ppm,tol_scans=tol_scans,
