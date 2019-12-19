@@ -16,7 +16,7 @@ Later, install rMSI and rMSIproc
 ```
 Then simply tell devtools to install rMSIcleanup from github latest release:
 ```R
-> devtools::install_github("gbaquer/rMSIcleanup")
+> devtools::install_github("gbaquer/rMSIcleanup", ref = "0.1")
 ```
 This will install rMSIcleanup package and all of its dependencies in your R environment. Then you can access its functions by loading the rMSIcleanup package or through the `::` operator.
 
