@@ -42,7 +42,8 @@ rMSIproc::StorePeakMatrix("after.zip",pks_clean)
 ### 3. Downloading sample data
 To easily try out the functionality of the package we provide a sample dataset available at github.com/gbaquer/MSI_Data 
 
-You can either download it manually or automatically using the following R Script: 
+You need to download both the Peak Matrix ("Ag_Pancreas_TOF_2015_Dataset2.zip") and the Processed File ("Ag_Pancreas_TOF_2015_Dataset2_proc.tar"). Alternatively, you can use the following R script to download the files automatically: 
+
 ```R
 ## 3.0. Download Sample Data
 url <- "url"
