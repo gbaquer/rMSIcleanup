@@ -24,7 +24,7 @@ This will install rMSIcleanup package and all of its dependencies in your R envi
 ```R
 ## 2.1. Load Data
 pks<-rMSIproc::LoadPeakMatrix("[Full Path to Peak Matrix (.zip)]")
-full<-rMSI::LoadMsiData([Full Path to Processed Data (.tar)])
+full<-rMSI::LoadMsiData("[Full Path to Processed Data (.tar)]")
 
 ## 2.2. Annotate Matrix
 results<-rMSIcleanup::annotate_matrix(pks,"Ag1",full)
