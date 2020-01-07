@@ -40,11 +40,11 @@ rMSIproc::StorePeakMatrix("before.zip",pks)
 rMSIproc::StorePeakMatrix("after.zip",pks_clean)
 ```
 ### 3. Downloading sample data
-To easily try out the functionality of the package we provide a sample dataset available at http://dx.doi.org/10.17632/vsk68tjcgh.2
+To easily try out the functionality of the package we provide a sample dataset available at http://dx.doi.org/10.17632/vsk68tjcgh.1
 
 You need to download both the Peak Matrix ("Ag_Pancreas_TOF_2015_Dataset2.zip") and the Processed File ("Ag_Pancreas_TOF_2015_Dataset2_proc.tar").
 
-Baquer, Gerard; Ràfols, Pere (2019), “rMSIcleanup Sample Data”, Mendeley Data, V2, doi: 10.17632/vsk68tjcgh.2
+Baquer, Gerard; Ràfols, Pere (2019), “rMSIcleanup Sample Data”, Mendeley Data, V2, doi: 10.17632/vsk68tjcgh.1
 
 ### 4. Processing your own imzML
 rMSIcleanup uses data in the rMSIproc format. To annotate your own data you will have to process the imzML using the following command:
@@ -54,4 +54,4 @@ rMSIcleanup uses data in the rMSIproc format. To annotate your own data you will
 ```
 A window will appear where you can set up all the processing parameters, the input data and the output directory to store the results.
 
-Refer to rMSIproc for further details (https://github.com/prafols/rMSIproc)
+Refer to the repository of rMSIproc for further details (https://github.com/prafols/rMSIproc)
