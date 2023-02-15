@@ -2,9 +2,9 @@
 
 rMSIcleanup is an open-source R package to annotate matrix-related signals in MSI data. The algorithm takes into account the chemical formula and the spatial distribution to determine which ions are matrix-related. The algorithm incorporates an overlapping peak detection feature to prevent misclassification of overlapped or isobaric ions. Additionally, the package generates a visual report to transparently justify each annotation.
 
-More information can be found in the accompanying preprint https://www.biorxiv.org/content/10.1101/2019.12.20.884957v1.
+More information can be found in the accompanying publication: 
 
-Baquer, G., Semente, L., Garcia-Altares, M., Lee, Y. J., Chaurand, P., Correig, X., & Rafols, P. (2019). rMSIcleanup: An open-source tool for matrix-related peak annotation in mass spectrometry imaging and its application to silver-assisted laser desorption/ionization. bioRxiv.
+Baquer, G., Sementé, L., García-Altares, M. et al. rMSIcleanup: an open-source tool for matrix-related peak annotation in mass spectrometry imaging and its application to silver-assisted laser desorption/ionization. J Cheminform 12, 45 (2020). https://doi.org/10.1186/s13321-020-00449-0
 
 ### 1. Installation
 
